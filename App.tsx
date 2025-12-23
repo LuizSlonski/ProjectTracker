@@ -12,9 +12,9 @@ import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationSta
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 
 // --- CONFIGURAÇÃO DA LOGO ---
-// Agora o sistema buscará o arquivo "logo.png" na pasta raiz do projeto.
-// Certifique-se de adicionar o arquivo com este nome exato.
-const COMPANY_LOGO = "./logo.png"; 
+// O arquivo "logo.png" DEVE estar dentro da pasta "public" na raiz do projeto.
+// Usamos a barra "/" para indicar que está na raiz do domínio.
+const COMPANY_LOGO = "/logo.png"; 
 
 const App: React.FC = () => {
   // Auth State
