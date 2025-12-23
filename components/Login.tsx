@@ -39,10 +39,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* Logo Container */}
           <div className="flex justify-center mb-6">
              <img 
-               src="public/logo.png" 
+               src="/logo.png" 
                alt="Logo" 
                className="h-24 w-auto object-contain"
                onError={(e) => {
+                 // Esconde a imagem se quebrar para não mostrar o ícone de arquivo quebrado
                  e.currentTarget.style.display = 'none';
                }}
              />

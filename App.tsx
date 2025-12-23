@@ -12,9 +12,9 @@ import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationSta
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 
 // --- CONFIGURAÇÃO DA LOGO ---
-// Ajuste para caminho relativo: busca dentro da pasta public explicitamente.
-// Isso resolve problemas em hospedagens estáticas onde a pasta public não é a raiz.
-const COMPANY_LOGO = "public/logo.png"; 
+// Em projetos Vite/Vercel padrão, o conteúdo da pasta 'public' é copiado para a raiz da build.
+// Portanto, o caminho correto é simplesmente "/logo.png" (absoluto na raiz).
+const COMPANY_LOGO = "/logo.png"; 
 
 const App: React.FC = () => {
   // Auth State
