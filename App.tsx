@@ -11,6 +11,11 @@ import { Login } from './components/Login';
 import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 
+// --- CONFIGURAÇÃO DA LOGO ---
+// Agora o sistema buscará o arquivo "logo.png" na pasta raiz do projeto.
+// Certifique-se de adicionar o arquivo com este nome exato.
+const COMPANY_LOGO = "./logo.png"; 
+
 const App: React.FC = () => {
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -145,13 +150,13 @@ const App: React.FC = () => {
         setActiveTab(id);
         setIsMobileMenuOpen(false);
       }}
-      className={`flex items-center w-full px-6 py-4 text-left transition-colors ${
+      className={`flex items-center w-full px-6 py-4 text-left transition-colors border-r-4 ${
         activeTab === id 
-          ? 'bg-blue-50 border-r-4 border-blue-600 text-blue-700 font-medium' 
-          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+          ? 'bg-slate-800 border-blue-500 text-blue-400 font-medium' 
+          : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
       }`}
     >
-      <Icon className={`w-5 h-5 mr-3 ${activeTab === id ? 'text-blue-600' : 'text-gray-400'}`} />
+      <Icon className={`w-5 h-5 mr-3 ${activeTab === id ? 'text-blue-400' : 'text-slate-500'}`} />
       {label}
     </button>
   );
@@ -159,15 +164,34 @@ const App: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        <div className="p-6 border-b border-gray-100">
-          <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Project<span className="text-blue-600">Tracker</span></h1>
-          <p className="text-xs text-gray-400 mt-1">Olá, {currentUser.name}</p>
-          <span className="text-[10px] uppercase tracking-wider font-bold text-gray-300 border border-gray-100 px-2 py-0.5 rounded-full mt-2 inline-block">
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 fixed h-full z-10 text-white shadow-xl">
+        <div className="p-6 border-b border-slate-800">
+          {/* Logo and Title Side by Side */}
+          <div className="mb-6 flex items-center gap-3">
+             <img 
+               src={COMPANY_LOGO}
+               alt="Logo" 
+               className="h-10 w-auto max-w-[50px] object-contain opacity-90" 
+               onError={(e) => {
+                 e.currentTarget.style.display = 'none';
+               }}
+             />
+             <div className="flex flex-col">
+                <span className="text-2xl font-bold text-white leading-none tracking-tight">
+                  Project<span className="text-blue-500">Tracker</span>
+                </span>
+             </div>
+          </div>
+          
+          <div className="flex items-center text-slate-500 text-xs mb-1 uppercase tracking-wider font-semibold">
+            Painel de Controle
+          </div>
+          <p className="text-sm font-medium text-slate-200 truncate">{currentUser.name}</p>
+          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full mt-2 inline-block">
             {currentUser.role}
           </span>
         </div>
-        <nav className="flex-1 mt-6">
+        <nav className="flex-1 mt-6 overflow-y-auto">
           <NavItem id="tracker" label="Projetar" icon={PenTool} />
           <NavItem id="history" label="Histórico" icon={History} />
           <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
@@ -178,10 +202,10 @@ const App: React.FC = () => {
             <NavItem id="team" label="Gestão de Equipe" icon={Users} />
           )}
         </nav>
-        <div className="p-6 border-t border-gray-100">
+        <div className="p-6 border-t border-slate-800 bg-slate-900">
           <button 
             onClick={handleLogout}
-            className="flex items-center text-sm text-red-600 hover:text-red-800 font-medium transition-colors w-full"
+            className="flex items-center text-sm text-red-400 hover:text-red-300 hover:bg-slate-800/50 p-2 rounded-lg font-medium transition-colors w-full"
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sair da Conta
@@ -190,17 +214,30 @@ const App: React.FC = () => {
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 w-full bg-white border-b border-gray-200 z-20 flex justify-between items-center p-4">
-        <h1 className="text-xl font-bold text-gray-800">Project<span className="text-blue-600">Tracker</span></h1>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600">
+      <div className="md:hidden fixed top-0 w-full bg-slate-900 border-b border-slate-800 z-20 flex justify-between items-center p-4 shadow-md">
+        {/* Logo Mobile */}
+        <div className="h-8 flex items-center gap-2">
+            <img 
+                src={COMPANY_LOGO} 
+                alt="Logo" 
+                className="h-full w-auto object-contain"
+                onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                }} 
+            />
+            <span className="text-lg font-bold text-white">
+                Project<span className="text-blue-500">Tracker</span>
+            </span>
+        </div>
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-300 hover:text-white transition-colors">
           {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
       </div>
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-white z-10 pt-20 md:hidden">
-          <nav className="flex flex-col">
+        <div className="fixed inset-0 bg-slate-900 z-10 pt-20 md:hidden animate-in slide-in-from-right duration-200">
+          <nav className="flex flex-col h-full overflow-y-auto">
             <NavItem id="tracker" label="Projetar" icon={PenTool} />
             <NavItem id="history" label="Histórico" icon={History} />
             <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
@@ -209,19 +246,21 @@ const App: React.FC = () => {
             {currentUser.role === 'GESTOR' && (
                <NavItem id="team" label="Gestão de Equipe" icon={Users} />
             )}
-            <button 
-              onClick={handleLogout}
-              className="flex items-center w-full px-6 py-4 text-left text-red-600 hover:bg-red-50"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              Sair
-            </button>
+            <div className="mt-auto p-6 border-t border-slate-800">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center w-full px-4 py-3 text-left text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <LogOut className="w-5 h-5 mr-3" />
+                Sair
+              </button>
+            </div>
           </nav>
         </div>
       )}
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-6 pt-24 md:pt-6 transition-all">
+      <main className="flex-1 md:ml-64 p-6 pt-24 md:pt-6 transition-all bg-gray-50 min-h-screen">
         {isLoading && (
           <div className="fixed top-0 left-0 w-full h-1 bg-blue-100 z-50">
             <div className="h-full bg-blue-600 animate-pulse w-full"></div>
@@ -230,9 +269,11 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto">
           {/* Tracker Tab: Always rendered, hidden via CSS to preserve timer state */}
           <div className={activeTab === 'tracker' ? 'block space-y-6' : 'hidden'}>
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Nova Liberação</h2>
-              <p className="text-gray-500">Logado como: <span className="font-semibold text-blue-600">{currentUser.name}</span></p>
+            <div className="mb-6 flex justify-between items-end">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Nova Liberação</h2>
+                <p className="text-gray-500">Bem-vindo, <span className="font-semibold text-blue-600">{currentUser.name}</span></p>
+              </div>
             </div>
             <ProjectTracker 
               onSave={handleProjectSave} 

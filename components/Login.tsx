@@ -33,29 +33,38 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full border border-gray-100">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-800">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 tracking-tight mb-2">Project<span className="text-blue-600">Tracker</span></h1>
-          <p className="text-gray-500 text-sm">Entre com suas credenciais para continuar</p>
+          {/* Logo Container */}
+          <div className="flex justify-center mb-6">
+             <img 
+               src="./logo.png" 
+               alt="Logo" 
+               className="h-24 w-auto object-contain"
+               onError={(e) => e.currentTarget.style.display = 'none'}
+             />
+          </div>
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Project<span className="text-blue-500">Tracker</span></h1>
+          <p className="text-slate-400 text-sm">Entre com suas credenciais para continuar</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center justify-center">
+          <div className="mb-4 p-3 bg-red-900/30 border border-red-800 text-red-200 text-sm rounded-lg flex items-center justify-center">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 ml-1">Usuário</label>
+            <label className="text-sm font-medium text-slate-300 ml-1">Usuário</label>
             <div className="relative">
-              <UserIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+              <UserIcon className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
               <input 
                 type="text" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                className="w-full pl-10 p-3 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="Seu nome de usuário"
                 required
               />
@@ -63,14 +72,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 ml-1">Senha</label>
+            <label className="text-sm font-medium text-slate-300 ml-1">Senha</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+              <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
               <input 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                className="w-full pl-10 p-3 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="Sua senha"
                 required
               />
@@ -80,14 +89,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <button 
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl flex items-center justify-center transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl flex items-center justify-center transition-all shadow-lg hover:shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <LogIn className="w-5 h-5 mr-2" />}
             {loading ? 'Entrando...' : 'Acessar Sistema'}
           </button>
         </form>
 
-        <div className="mt-8 text-center text-xs text-gray-400">
+        <div className="mt-8 text-center text-xs text-slate-600">
           ProjectTracker &copy; 2024
         </div>
       </div>
