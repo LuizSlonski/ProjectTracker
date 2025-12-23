@@ -12,9 +12,9 @@ import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationSta
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 
 // --- CONFIGURAÇÃO DA LOGO ---
-// O arquivo "logo.png" DEVE estar dentro da pasta "public" na raiz do projeto.
-// Usamos a barra "/" para indicar que está na raiz do domínio.
-const COMPANY_LOGO = "/logo.png"; 
+// Ajuste para caminho relativo: busca dentro da pasta public explicitamente.
+// Isso resolve problemas em hospedagens estáticas onde a pasta public não é a raiz.
+const COMPANY_LOGO = "public/logo.png"; 
 
 const App: React.FC = () => {
   // Auth State
@@ -173,6 +173,7 @@ const App: React.FC = () => {
                alt="Logo" 
                className="h-10 w-auto max-w-[50px] object-contain opacity-90" 
                onError={(e) => {
+                 // Fallback visual se a imagem falhar
                  e.currentTarget.style.display = 'none';
                }}
              />
