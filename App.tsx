@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb, Hexagon } from 'lucide-react';
 import { ProjectTracker } from './components/ProjectTracker';
 import { IssueReporter } from './components/IssueReporter';
 import { IssueHistory } from './components/IssueHistory';
@@ -11,10 +11,9 @@ import { Login } from './components/Login';
 import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 
-// --- CONFIGURAÇÃO DA LOGO ---
-// Em projetos Vite/Vercel padrão, o conteúdo da pasta 'public' é copiado para a raiz da build.
-// Portanto, o caminho correto é simplesmente "/logo.png" (absoluto na raiz).
-const COMPANY_LOGO = "/logo.png"; 
+// Tenta carregar da raiz (padrão Vite/Build). 
+// Se falhar, o código abaixo mostra um ícone de fallback.
+const COMPANY_LOGO_URL = "/logo.png"; 
 
 const App: React.FC = () => {
   // Auth State
@@ -26,6 +25,9 @@ const App: React.FC = () => {
   const [data, setData] = useState<AppState>({ projects: [], issues: [], innovations: [] });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Logo Error State
+  const [logoError, setLogoError] = useState(false);
 
   // Load data when user logs in or mounts
   useEffect(() => {
@@ -51,25 +53,19 @@ const App: React.FC = () => {
     return {
       projects: data.projects.filter(p => p.userId === currentUser.id),
       issues: data.issues.filter(i => i.reportedBy === currentUser.id),
-      // For innovations, usually it's good for everyone to see, but editing is restricted. 
-      // For simplicity here, we show all so they can see colleagues' ideas, or filter if preferred.
-      // Let's show all innovations for collaboration.
       innovations: data.innovations
     };
   }, [data, currentUser]);
 
   const handleProjectSave = async (project: ProjectSession) => {
     setIsLoading(true);
-    // Inject current user ID into project
     const projectWithUser = { ...project, userId: currentUser?.id };
     
-    // Optimistic update
     setData(prev => ({
       ...prev,
       projects: [projectWithUser, ...prev.projects]
     }));
 
-    // Async save to DB and refresh
     try {
       const updatedData = await addProject(projectWithUser);
       setData(updatedData);
@@ -83,10 +79,8 @@ const App: React.FC = () => {
 
   const handleIssueReport = async (issue: IssueRecord) => {
     setIsLoading(true);
-    // Inject current user ID into issue
     const issueWithUser = { ...issue, reportedBy: currentUser?.id };
 
-     // Optimistic update
      setData(prev => ({
       ...prev,
       issues: [issueWithUser, ...prev.issues]
@@ -106,7 +100,6 @@ const App: React.FC = () => {
 
   const handleInnovationAdd = async (innovation: InnovationRecord) => {
     setIsLoading(true);
-    // Optimistic update
     setData(prev => ({
       ...prev,
       innovations: [innovation, ...prev.innovations]
@@ -168,15 +161,18 @@ const App: React.FC = () => {
         <div className="p-6 border-b border-slate-800">
           {/* Logo and Title Side by Side */}
           <div className="mb-6 flex items-center gap-3">
-             <img 
-               src={COMPANY_LOGO}
-               alt="logo"
-               className="h-10 w-auto max-w-[50px] object-contain opacity-90" 
-               onError={(e) => {
-                 // Fallback visual se a imagem falhar
-                 e.currentTarget.style.display = 'none';
-               }}
-             />
+             {!logoError ? (
+               <img 
+                 src={COMPANY_LOGO_URL}
+                 alt="Logo" 
+                 className="h-10 w-auto max-w-[50px] object-contain" 
+                 onError={() => setLogoError(true)}
+               />
+             ) : (
+               <div className="h-10 w-10 min-w-[40px] bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                 <Hexagon className="h-6 w-6 text-white" />
+               </div>
+             )}
              <div className="flex flex-col">
                 <span className="text-2xl font-bold text-white leading-none tracking-tight">
                   Project<span className="text-blue-500">Tracker</span>
@@ -218,14 +214,18 @@ const App: React.FC = () => {
       <div className="md:hidden fixed top-0 w-full bg-slate-900 border-b border-slate-800 z-20 flex justify-between items-center p-4 shadow-md">
         {/* Logo Mobile */}
         <div className="h-8 flex items-center gap-2">
-            <img 
-                src={COMPANY_LOGO} 
-                alt="Logo" 
-                className="h-full w-auto object-contain"
-                onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                }} 
-            />
+            {!logoError ? (
+                <img 
+                    src={COMPANY_LOGO_URL} 
+                    alt="Logo" 
+                    className="h-full w-auto object-contain"
+                    onError={() => setLogoError(true)}
+                />
+            ) : (
+                <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <Hexagon className="h-5 w-5 text-white" />
+                </div>
+            )}
             <span className="text-lg font-bold text-white">
                 Project<span className="text-blue-500">Tracker</span>
             </span>
@@ -268,7 +268,7 @@ const App: React.FC = () => {
           </div>
         )}
         <div className="max-w-5xl mx-auto">
-          {/* Tracker Tab: Always rendered, hidden via CSS to preserve timer state */}
+          {/* Tracker Tab */}
           <div className={activeTab === 'tracker' ? 'block space-y-6' : 'hidden'}>
             <div className="mb-6 flex justify-between items-end">
               <div>
