@@ -170,7 +170,7 @@ const App: React.FC = () => {
           <div className="mb-6 flex items-center gap-3">
              <img 
                src={COMPANY_LOGO}
-               alt="Logo" 
+               alt="logo"
                className="h-10 w-auto max-w-[50px] object-contain opacity-90" 
                onError={(e) => {
                  // Fallback visual se a imagem falhar
