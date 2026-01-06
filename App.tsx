@@ -10,9 +10,9 @@ import { InnovationManager } from './components/InnovationManager';
 import { Login } from './components/Login';
 import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
+import logoImg from './assets/logo.png'; // IMPORTANTE: Importando a imagem para o Vite processar o caminho
 
-// Apontando diretamente para a pasta public conforme sua estrutura de arquivos
-const COMPANY_LOGO_URL = "../src/assets/logo.png"; 
+const COMPANY_LOGO_URL = logoImg;
 
 const App: React.FC = () => {
   // Auth State
