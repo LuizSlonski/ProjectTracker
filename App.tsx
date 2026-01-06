@@ -10,7 +10,7 @@ import { InnovationManager } from './components/InnovationManager';
 import { Login } from './components/Login';
 import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
-import logoImg from './assets/logo.png'; // IMPORTANTE: Importando a imagem para o Vite processar o caminho
+import logoImg from '../src/assets/logo.png'; // IMPORTANTE: Importando a imagem para o Vite processar o caminho
 
 const COMPANY_LOGO_URL = logoImg;
 
