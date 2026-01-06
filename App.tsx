@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb, Hexagon } from 'lucide-react';
+import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb } from 'lucide-react';
 import { ProjectTracker } from './components/ProjectTracker';
 import { IssueReporter } from './components/IssueReporter';
 import { IssueHistory } from './components/IssueHistory';
@@ -11,9 +11,8 @@ import { Login } from './components/Login';
 import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 
-// Tenta carregar da raiz (padrão Vite/Build). 
-// Se falhar, o código abaixo mostra um ícone de fallback.
-const COMPANY_LOGO_URL = "/logo.png"; 
+// Apontando diretamente para a pasta public conforme sua estrutura de arquivos
+const COMPANY_LOGO_URL = "../src/assets/logo.png"; 
 
 const App: React.FC = () => {
   // Auth State
@@ -25,9 +24,6 @@ const App: React.FC = () => {
   const [data, setData] = useState<AppState>({ projects: [], issues: [], innovations: [] });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Logo Error State
-  const [logoError, setLogoError] = useState(false);
 
   // Load data when user logs in or mounts
   useEffect(() => {
@@ -161,18 +157,11 @@ const App: React.FC = () => {
         <div className="p-6 border-b border-slate-800">
           {/* Logo and Title Side by Side */}
           <div className="mb-6 flex items-center gap-3">
-             {!logoError ? (
-               <img 
-                 src={COMPANY_LOGO_URL}
-                 alt="Logo" 
-                 className="h-10 w-auto max-w-[50px] object-contain" 
-                 onError={() => setLogoError(true)}
-               />
-             ) : (
-               <div className="h-10 w-10 min-w-[40px] bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                 <Hexagon className="h-6 w-6 text-white" />
-               </div>
-             )}
+             <img 
+               src={COMPANY_LOGO_URL}
+               alt="Logo" 
+               className="h-10 w-auto max-w-[50px] object-contain" 
+             />
              <div className="flex flex-col">
                 <span className="text-2xl font-bold text-white leading-none tracking-tight">
                   Project<span className="text-blue-500">Tracker</span>
@@ -214,18 +203,11 @@ const App: React.FC = () => {
       <div className="md:hidden fixed top-0 w-full bg-slate-900 border-b border-slate-800 z-20 flex justify-between items-center p-4 shadow-md">
         {/* Logo Mobile */}
         <div className="h-8 flex items-center gap-2">
-            {!logoError ? (
-                <img 
-                    src={COMPANY_LOGO_URL} 
-                    alt="Logo" 
-                    className="h-full w-auto object-contain"
-                    onError={() => setLogoError(true)}
-                />
-            ) : (
-                <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <Hexagon className="h-5 w-5 text-white" />
-                </div>
-            )}
+            <img 
+                src={COMPANY_LOGO_URL} 
+                alt="Logo" 
+                className="h-full w-auto object-contain"
+            />
             <span className="text-lg font-bold text-white">
                 Project<span className="text-blue-500">Tracker</span>
             </span>
@@ -299,11 +281,20 @@ const App: React.FC = () => {
 
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Painel de Desempenho</h2>
-                <p className="text-gray-500">
-                  {currentUser.role === 'GESTOR' ? "Indicadores globais da equipe." : "Seus indicadores de produtividade."}
-                </p>
+               <div className="mb-6 flex items-center gap-4">
+                 <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+                    <img 
+                      src={COMPANY_LOGO_URL}
+                      alt="Logo" 
+                      className="h-12 w-auto object-contain" 
+                    />
+                 </div>
+                 <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Painel de Desempenho</h2>
+                    <p className="text-gray-500">
+                      {currentUser.role === 'GESTOR' ? "Indicadores globais da equipe." : "Seus indicadores de produtividade."}
+                    </p>
+                 </div>
               </div>
               <Dashboard data={displayData} currentUser={currentUser} />
             </div>
