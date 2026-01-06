@@ -336,7 +336,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ onSave, isVisibl
       {!isVisible && status === 'RUNNING' && (
         <div 
           onClick={onNavigateBack}
-          className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white p-4 rounded-xl shadow-2xl cursor-pointer hover:bg-gray-800 transition-all transform hover:scale-105 group border border-gray-700"
+          className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white p-4 rounded-xl shadow-2xl cursor-pointer hover:bg-slate-800 transition-all transform hover:scale-105 group border border-slate-700 ring-2 ring-blue-500/50"
         >
           <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center text-green-400 text-xs font-bold uppercase tracking-wider animate-pulse">
@@ -348,8 +348,11 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ onSave, isVisibl
           <div className="font-mono text-3xl font-bold mb-1">
             {formatTime(elapsedSeconds)}
           </div>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-gray-400 mb-1">
             NS: {ns} • {implementType}
+          </div>
+          <div className="text-xs text-blue-400 font-medium mt-2 border-t border-slate-700 pt-2">
+            Clique para retornar
           </div>
         </div>
       )}

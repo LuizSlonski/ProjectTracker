@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { Lock, User as UserIcon, LogIn, Loader2, Hexagon } from 'lucide-react';
+import { Lock, User as UserIcon, LogIn, Loader2 } from 'lucide-react';
 import { authenticateUser } from '../services/storageService';
 import { User } from '../types';
-import logoImg from '../src/assets/logo.png';
 
 interface LoginProps {
   onLogin: (user: User) => void;
 }
+
+// Caminho direto para a imagem
+const logoImg = "/src/assets/logo.png";
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,20 +39,13 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-800">
         <div className="text-center mb-8">
-          {/* Logo Container com Fallback Inteligente */}
+          {/* Logo Container */}
           <div className="flex justify-center mb-6">
-             {!imgError ? (
-               <img 
-                 src={logoImg}
-                 alt="Logo" 
-                 className="h-24 w-auto object-contain"
-                 onError={() => setImgError(true)}
-               />
-             ) : (
-               <div className="h-24 w-24 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 transform rotate-3 hover:rotate-6 transition-transform">
-                  <Hexagon className="w-12 h-12 text-white" strokeWidth={1.5} />
-               </div>
-             )}
+             <img 
+               src={logoImg} 
+               alt="Logo" 
+               className="h-24 w-auto object-contain"
+             />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Project<span className="text-blue-500">Tracker</span></h1>
           <p className="text-slate-400 text-sm">Entre com suas credenciais para continuar</p>

@@ -10,9 +10,9 @@ import { InnovationManager } from './components/InnovationManager';
 import { Login } from './components/Login';
 import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
-import logoImg from './src/assets/logo.png'; // IMPORTANTE: Importando a imagem para o Vite processar o caminho
 
-const COMPANY_LOGO_URL = logoImg;
+// Definindo o caminho como string direta para evitar erros de importação de módulo
+const COMPANY_LOGO_URL = "/src/assets/logo.png";
 
 const App: React.FC = () => {
   // Auth State
@@ -282,7 +282,8 @@ const App: React.FC = () => {
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
                <div className="mb-6 flex items-center gap-4">
-                 <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+                 {/* Logo Container com fundo escuro (slate-900) */}
+                 <div className="bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-800">
                     <img 
                       src={COMPANY_LOGO_URL}
                       alt="Logo" 
