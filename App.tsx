@@ -10,9 +10,9 @@ import { InnovationManager } from './components/InnovationManager';
 import { Login } from './components/Login';
 import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
+import logoImg from './src/assets/logo.png'; 
 
-// Definindo o caminho como string direta para evitar erros de importação de módulo
-const COMPANY_LOGO_URL = "/src/assets/logo.png";
+const COMPANY_LOGO_URL = logoImg;
 
 const App: React.FC = () => {
   // Auth State

@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { Lock, User as UserIcon, LogIn, Loader2 } from 'lucide-react';
 import { authenticateUser } from '../services/storageService';
 import { User } from '../types';
+import logoImg from '../src/assets/logo.png';
 
 interface LoginProps {
   onLogin: (user: User) => void;
 }
-
-// Caminho direto para a imagem
-const logoImg = "/src/assets/logo.png";
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
