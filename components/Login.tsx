@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, User as UserIcon, LogIn, Loader2, Hexagon } from 'lucide-react';
 import { authenticateUser } from '../services/storageService';
 import { User } from '../types';
+import logoImg from '../src/assets/logo.png';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -41,7 +42,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <div className="flex justify-center mb-6">
              {!imgError ? (
                <img 
-                 src="/logo.png" 
+                 src={logoImg}
                  alt="Logo" 
                  className="h-24 w-auto object-contain"
                  onError={() => setImgError(true)}
