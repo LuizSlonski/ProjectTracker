@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from '../types';
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://vfctdeaeahhermgzlaml.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_9vJxl7Ogf1ZZ9mlNyHj6DQ_pW3HJhK2';
+const SUPABASE_URL = 'https://otajfsjtpucdmkwgmeku.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_tUhxD-ixI7mhxhvB5FYVGQ_FCkLGa6h';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
