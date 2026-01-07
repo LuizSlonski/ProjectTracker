@@ -113,6 +113,32 @@ export const addProject = async (project: ProjectSession): Promise<AppState> => 
   }
 };
 
+export const updateProject = async (project: ProjectSession): Promise<AppState> => {
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        ns: project.ns,
+        project_code: project.projectCode,
+        type: project.type,
+        implement_type: project.implementType,
+        end_time: project.endTime,
+        total_active_seconds: project.totalActiveSeconds,
+        pauses: project.pauses,
+        status: project.status,
+        notes: project.notes
+      })
+      .eq('id', project.id);
+
+    if (error) throw error;
+
+    return fetchAppState();
+  } catch (error) {
+    console.error("Failed to update project", error);
+    return fetchAppState();
+  }
+};
+
 export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
   try {
     const { error } = await supabase.from('issues').insert([{

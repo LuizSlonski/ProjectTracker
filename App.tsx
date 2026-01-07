@@ -8,7 +8,7 @@ import { ProjectHistory } from './components/ProjectHistory';
 import { UserManagement } from './components/UserManagement';
 import { InnovationManager } from './components/InnovationManager';
 import { Login } from './components/Login';
-import { fetchAppState, addProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
+import { fetchAppState, addProject, updateProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 import logoImg from './src/assets/logo.png'; 
 
@@ -53,10 +53,9 @@ const App: React.FC = () => {
     };
   }, [data, currentUser]);
 
-  const handleProjectSave = async (project: ProjectSession) => {
-    setIsLoading(true);
+  const handleProjectCreate = async (project: ProjectSession) => {
+    // Optimistic Update
     const projectWithUser = { ...project, userId: currentUser?.id };
-    
     setData(prev => ({
       ...prev,
       projects: [projectWithUser, ...prev.projects]
@@ -65,11 +64,26 @@ const App: React.FC = () => {
     try {
       const updatedData = await addProject(projectWithUser);
       setData(updatedData);
-      alert(`Projeto NS ${project.ns} salvo com sucesso!`);
     } catch (e) {
-      alert("Erro ao salvar no banco de dados.");
-    } finally {
-      setIsLoading(false);
+      alert("Erro ao criar projeto.");
+    }
+  };
+
+  const handleProjectUpdate = async (project: ProjectSession) => {
+    // Optimistic Update
+    setData(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === project.id ? project : p)
+    }));
+
+    try {
+        const updatedData = await updateProject(project);
+        setData(updatedData);
+        if (project.status === 'COMPLETED') {
+             alert(`Projeto NS ${project.ns} finalizado com sucesso!`);
+        }
+    } catch (e) {
+        alert("Erro ao atualizar projeto.");
     }
   };
 
@@ -254,12 +268,14 @@ const App: React.FC = () => {
           <div className={activeTab === 'tracker' ? 'block space-y-6' : 'hidden'}>
             <div className="mb-6 flex justify-between items-end">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Nova Liberação</h2>
+                <h2 className="text-2xl font-bold text-gray-800">Área de Projeto</h2>
                 <p className="text-gray-500">Bem-vindo, <span className="font-semibold text-blue-600">{currentUser.name}</span></p>
               </div>
             </div>
             <ProjectTracker 
-              onSave={handleProjectSave} 
+              existingProjects={displayData.projects}
+              onCreate={handleProjectCreate}
+              onUpdate={handleProjectUpdate}
               isVisible={activeTab === 'tracker'}
               onNavigateBack={() => setActiveTab('tracker')}
             />
