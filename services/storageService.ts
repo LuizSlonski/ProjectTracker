@@ -1,6 +1,5 @@
-
 import { createClient } from '@supabase/supabase-js';
-import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from '../types';
+import { AppState, ProjectSession, IssueRecord, User, InnovationRecord, CalculationType } from '../types';
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://otajfsjtpucdmkwgmeku.supabase.co';
@@ -50,7 +49,7 @@ export const fetchAppState = async (): Promise<AppState> => {
       startTime: p.start_time,
       endTime: p.end_time,
       totalActiveSeconds: p.total_active_seconds,
-      pauses: typeof p.pauses === 'string' ? JSON.parse(p.pauses) : p.pauses,
+      pauses: typeof p.pauses === 'string' ? JSON.parse(p.pauses) : (p.pauses || []),
       status: p.status,
       notes: p.notes,
       userId: p.user_id
@@ -71,11 +70,12 @@ export const fetchAppState = async (): Promise<AppState> => {
       description: inv.description,
       type: inv.type,
       
-      calculationType: inv.calculation_type,
-      unitSavings: inv.unit_savings,
-      quantity: inv.quantity,
-      totalAnnualSavings: inv.total_annual_savings,
-      investmentCost: inv.investment_cost,
+      // Handle potential nulls from DB using defaults
+      calculationType: inv.calculation_type as CalculationType || CalculationType.RECURRING_MONTHLY,
+      unitSavings: Number(inv.unit_savings) || 0,
+      quantity: Number(inv.quantity) || 0,
+      totalAnnualSavings: Number(inv.total_annual_savings) || 0,
+      investmentCost: Number(inv.investment_cost) || 0,
 
       status: inv.status,
       authorId: inv.author_id,
@@ -110,7 +110,7 @@ export const addProject = async (project: ProjectSession): Promise<AppState> => 
     return fetchAppState();
   } catch (error) {
     console.error("Failed to add project", error);
-    return fetchAppState();
+    throw error;
   }
 };
 
@@ -135,7 +135,7 @@ export const updateProject = async (project: ProjectSession): Promise<AppState> 
     return fetchAppState();
   } catch (error) {
     console.error("Failed to update project", error);
-    return fetchAppState();
+    throw error;
   }
 };
 
@@ -146,7 +146,7 @@ export const deleteProject = async (id: string): Promise<AppState> => {
     return fetchAppState();
   } catch (error) {
     console.error("Failed to delete project", error);
-    return fetchAppState();
+    throw error;
   }
 };
 
@@ -165,7 +165,7 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
     return fetchAppState();
   } catch (error) {
     console.error("Failed to add issue", error);
-    return fetchAppState();
+    throw error;
   }
 };
 
@@ -176,7 +176,7 @@ export const deleteIssue = async (id: string): Promise<AppState> => {
     return fetchAppState();
   } catch (error) {
     console.error("Failed to delete issue", error);
-    return fetchAppState();
+    throw error;
   }
 };
 
@@ -199,11 +199,14 @@ export const addInnovation = async (innovation: InnovationRecord): Promise<AppSt
       created_at: innovation.createdAt
     }]);
 
-    if (error) throw error;
+    if (error) {
+        console.error("Supabase Error:", error.message);
+        throw error;
+    }
     return fetchAppState();
   } catch (error) {
     console.error("Failed to add innovation", error);
-    return fetchAppState();
+    throw error; // Propagate error to UI
   }
 };
 
@@ -218,7 +221,7 @@ export const updateInnovationStatus = async (id: string, status: string): Promis
     return fetchAppState();
   } catch (error) {
     console.error("Failed to update innovation status", error);
-    return fetchAppState();
+    throw error;
   }
 };
 
@@ -229,7 +232,7 @@ export const deleteInnovation = async (id: string): Promise<AppState> => {
     return fetchAppState();
   } catch (error) {
     console.error("Failed to delete innovation", error);
-    return fetchAppState();
+    throw error;
   }
 };
 

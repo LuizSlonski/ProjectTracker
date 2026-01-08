@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb } from 'lucide-react';
 import { ProjectTracker } from './components/ProjectTracker';
@@ -144,16 +143,22 @@ const App: React.FC = () => {
 
   const handleInnovationAdd = async (innovation: InnovationRecord) => {
     setIsLoading(true);
+    // Optimistic Update
     setData(prev => ({
       ...prev,
       innovations: [innovation, ...prev.innovations]
     }));
+
     try {
       const updatedData = await addInnovation(innovation);
       setData(updatedData);
       alert('Inovação registrada com sucesso!');
     } catch (e) {
-      alert("Erro ao salvar inovação.");
+      console.error(e);
+      alert("Erro ao salvar inovação. Verifique se o banco de dados foi atualizado com as novas colunas.");
+      // Revert optimistic update by refetching
+      const revertedData = await fetchAppState();
+      setData(revertedData);
     } finally {
       setIsLoading(false);
     }
