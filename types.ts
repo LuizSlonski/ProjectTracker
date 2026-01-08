@@ -1,3 +1,4 @@
+
 export enum ProjectType {
   VARIATION = 'Variação',
   DEVELOPMENT = 'Desenvolvimento',
@@ -24,7 +25,14 @@ export enum IssueType {
 
 export enum InnovationType {
   NEW_PROJECT = 'Novo Projeto',
-  PRODUCT_IMPROVEMENT = 'Melhoria de Produto'
+  PRODUCT_IMPROVEMENT = 'Melhoria de Produto',
+  PROCESS_OPTIMIZATION = 'Otimização de Processo'
+}
+
+export enum CalculationType {
+  PER_UNIT = 'Por Unidade Produzida',
+  RECURRING_MONTHLY = 'Recorrente (Mensal)',
+  ONE_TIME = 'Valor Único / Fixo'
 }
 
 export type UserRole = 'GESTOR' | 'PROJETISTA';
@@ -72,9 +80,14 @@ export interface InnovationRecord {
   title: string;
   description: string;
   type: InnovationType;
-  currentCost?: number; // Custo atual (se aplicável)
-  projectedCost: number; // Custo previsto
-  costDifference: number; // Diferença (Positivo = Economia, Negativo = Aumento de Custo)
+  
+  // Advanced Calculation Fields
+  calculationType: CalculationType;
+  unitSavings: number; // The base value (e.g., saving per unit, or value per month)
+  quantity: number; // Multiplier (e.g., units per year, or 12 months)
+  totalAnnualSavings: number; // The calculated total: unitSavings * quantity (if recurring/unit)
+  investmentCost?: number; // Cost to implement (optional)
+
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'IMPLEMENTED';
   authorId?: string;
   createdAt: string;

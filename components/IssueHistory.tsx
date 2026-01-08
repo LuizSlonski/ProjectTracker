@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, AlertTriangle, Calendar, User as UserIcon } from 'lucide-react';
+import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2 } from 'lucide-react';
 import { AppState, IssueType, User } from '../types';
 import { ISSUE_TYPES } from '../constants';
 import { fetchUsers } from '../services/storageService';
@@ -7,9 +8,10 @@ import { fetchUsers } from '../services/storageService';
 interface IssueHistoryProps {
   data: AppState;
   currentUser: User;
+  onDelete?: (id: string) => void;
 }
 
-export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser }) => {
+export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, onDelete }) => {
   const [filterNs, setFilterNs] = useState('');
   const [filterType, setFilterType] = useState<string>('');
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
@@ -71,8 +73,17 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser })
       <div className="space-y-4">
         {filteredIssues.length > 0 ? (
           filteredIssues.map((issue) => (
-            <div key={issue.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-2">
+            <div key={issue.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group">
+              {isGestor && (
+                <button 
+                  onClick={() => onDelete && onDelete(issue.id)}
+                  className="absolute top-4 right-4 text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded transition"
+                  title="Excluir"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <div className="flex justify-between items-start mb-2 pr-10">
                 <div className="flex items-center gap-3">
                   <span className={`px-2 py-1 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-100`}>
                     {issue.type}

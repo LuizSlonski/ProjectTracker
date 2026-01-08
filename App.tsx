@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb } from 'lucide-react';
 import { ProjectTracker } from './components/ProjectTracker';
@@ -8,7 +9,17 @@ import { ProjectHistory } from './components/ProjectHistory';
 import { UserManagement } from './components/UserManagement';
 import { InnovationManager } from './components/InnovationManager';
 import { Login } from './components/Login';
-import { fetchAppState, addProject, updateProject, addIssue, addInnovation, updateInnovationStatus } from './services/storageService';
+import { 
+  fetchAppState, 
+  addProject, 
+  updateProject, 
+  deleteProject,
+  addIssue, 
+  deleteIssue,
+  addInnovation, 
+  updateInnovationStatus,
+  deleteInnovation
+} from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
 import logoImg from './src/assets/logo.png'; 
 
@@ -53,14 +64,14 @@ const App: React.FC = () => {
     };
   }, [data, currentUser]);
 
+  // --- HANDLERS ---
+
   const handleProjectCreate = async (project: ProjectSession) => {
-    // Optimistic Update
     const projectWithUser = { ...project, userId: currentUser?.id };
     setData(prev => ({
       ...prev,
       projects: [projectWithUser, ...prev.projects]
     }));
-
     try {
       const updatedData = await addProject(projectWithUser);
       setData(updatedData);
@@ -70,12 +81,10 @@ const App: React.FC = () => {
   };
 
   const handleProjectUpdate = async (project: ProjectSession) => {
-    // Optimistic Update
     setData(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === project.id ? project : p)
     }));
-
     try {
         const updatedData = await updateProject(project);
         setData(updatedData);
@@ -87,15 +96,27 @@ const App: React.FC = () => {
     }
   };
 
+  const handleProjectDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja apagar este projeto? Essa ação não pode ser desfeita.")) return;
+    
+    setIsLoading(true);
+    try {
+      const updatedData = await deleteProject(id);
+      setData(updatedData);
+    } catch (e) {
+      alert("Erro ao apagar projeto.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleIssueReport = async (issue: IssueRecord) => {
     setIsLoading(true);
     const issueWithUser = { ...issue, reportedBy: currentUser?.id };
-
      setData(prev => ({
       ...prev,
       issues: [issueWithUser, ...prev.issues]
     }));
-
     try {
       const updatedData = await addIssue(issueWithUser);
       setData(updatedData);
@@ -108,13 +129,25 @@ const App: React.FC = () => {
     }
   };
 
+  const handleIssueDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja apagar esta ocorrência?")) return;
+    setIsLoading(true);
+    try {
+      const updatedData = await deleteIssue(id);
+      setData(updatedData);
+    } catch (e) {
+      alert("Erro ao apagar ocorrência.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleInnovationAdd = async (innovation: InnovationRecord) => {
     setIsLoading(true);
     setData(prev => ({
       ...prev,
       innovations: [innovation, ...prev.innovations]
     }));
-
     try {
       const updatedData = await addInnovation(innovation);
       setData(updatedData);
@@ -136,7 +169,20 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }
+  };
+
+  const handleInnovationDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir esta inovação?")) return;
+    setIsLoading(true);
+    try {
+      const updatedData = await deleteInnovation(id);
+      setData(updatedData);
+    } catch (e) {
+      alert("Erro ao excluir inovação.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -169,7 +215,6 @@ const App: React.FC = () => {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 fixed h-full z-10 text-white shadow-xl">
         <div className="p-6 border-b border-slate-800">
-          {/* Logo and Title Side by Side */}
           <div className="mb-6 flex items-center gap-3">
              <img 
                src={COMPANY_LOGO_URL}
@@ -215,7 +260,6 @@ const App: React.FC = () => {
 
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 w-full bg-slate-900 border-b border-slate-800 z-20 flex justify-between items-center p-4 shadow-md">
-        {/* Logo Mobile */}
         <div className="h-8 flex items-center gap-2">
             <img 
                 src={COMPANY_LOGO_URL} 
@@ -291,14 +335,17 @@ const App: React.FC = () => {
                     : "Consulte suas liberações passadas."}
                 </p>
               </div>
-              <ProjectHistory data={displayData} currentUser={currentUser} />
+              <ProjectHistory 
+                data={displayData} 
+                currentUser={currentUser} 
+                onDelete={handleProjectDelete}
+              />
             </div>
           )}
 
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
                <div className="mb-6 flex items-center gap-4">
-                 {/* Logo Container com fundo escuro (slate-900) */}
                  <div className="bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-800">
                     <img 
                       src={COMPANY_LOGO_URL}
@@ -347,7 +394,11 @@ const App: React.FC = () => {
               {issueTab === 'new' ? (
                 <IssueReporter onReport={handleIssueReport} />
               ) : (
-                <IssueHistory data={displayData} currentUser={currentUser} />
+                <IssueHistory 
+                  data={displayData} 
+                  currentUser={currentUser} 
+                  onDelete={handleIssueDelete}
+                />
               )}
             </div>
           )}
@@ -357,6 +408,7 @@ const App: React.FC = () => {
                 innovations={displayData.innovations} 
                 onAdd={handleInnovationAdd}
                 onStatusChange={handleInnovationStatusChange}
+                onDelete={handleInnovationDelete}
                 currentUser={currentUser}
              />
           )}

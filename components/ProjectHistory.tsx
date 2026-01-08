@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { Filter, Calendar, Search, Clock, Hash, User as UserIcon, Truck } from 'lucide-react';
+import { Filter, Calendar, Search, Clock, Hash, User as UserIcon, Truck, Trash2 } from 'lucide-react';
 import { AppState, ProjectType, User } from '../types';
 import { PROJECT_TYPES } from '../constants';
 import { fetchUsers } from '../services/storageService';
@@ -7,9 +8,10 @@ import { fetchUsers } from '../services/storageService';
 interface ProjectHistoryProps {
   data: AppState;
   currentUser: User;
+  onDelete?: (id: string) => void;
 }
 
-export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUser }) => {
+export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUser, onDelete }) => {
   const [filterNs, setFilterNs] = useState('');
   const [filterType, setFilterType] = useState<string>('');
   const [startDate, setStartDate] = useState('');
@@ -133,13 +135,13 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
                 <th className="p-4">Implemento</th>
                 <th className="p-4">Início</th>
                 <th className="p-4">Fim</th>
-                <th className="p-4">Duração Total</th>
-                <th className="p-4">Motivos de Pausa</th>
+                <th className="p-4">Duração</th>
+                {isGestor && <th className="p-4 text-center">Ações</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredProjects.map((project) => (
-                <tr key={project.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                       project.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
@@ -187,20 +189,17 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
                     <Clock className="w-4 h-4 mr-1 text-gray-400" />
                     {formatDuration(project.totalActiveSeconds)}
                   </td>
-                  <td className="p-4 text-gray-500">
-                    {project.pauses.length > 0 ? (
-                      <div className="flex flex-col gap-1 max-w-[200px]">
-                        {project.pauses.map((p, idx) => (
-                           <div key={idx} className="text-xs bg-yellow-50 text-yellow-800 px-2 py-1 rounded border border-yellow-100 flex justify-between items-center">
-                             <span className="truncate mr-2" title={p.reason}>{p.reason}</span>
-                             <span className="font-mono text-yellow-600/70">{formatPauseDuration(p.durationSeconds)}</span>
-                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-gray-300">-</span>
-                    )}
-                  </td>
+                  {isGestor && (
+                    <td className="p-4 text-center">
+                      <button 
+                        onClick={() => onDelete && onDelete(project.id)}
+                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded transition"
+                        title="Excluir Projeto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
               {filteredProjects.length === 0 && (

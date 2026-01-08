@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
@@ -93,10 +94,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     }));
   }, [filteredProjects]);
 
-  // 1.5 Calculate Total Savings
+  // 1.5 Calculate Total Savings (ONLY APPROVED/IMPLEMENTED)
   const totalSavings = useMemo(() => {
     return filteredInnovations.reduce((acc, curr) => {
-        if(curr.costDifference > 0) return acc + curr.costDifference;
+        // Only count if status is APPROVED or IMPLEMENTED
+        if (curr.status === 'APPROVED' || curr.status === 'IMPLEMENTED') {
+            return acc + (curr.totalAnnualSavings || 0);
+        }
         return acc;
     }, 0);
   }, [filteredInnovations]);
@@ -185,11 +189,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         const items = filteredInnovations.filter(i => i.status === status);
         const newProjects = items.filter(i => i.type === InnovationType.NEW_PROJECT).length;
         const improvements = items.filter(i => i.type === InnovationType.PRODUCT_IMPROVEMENT).length;
+        const optimizations = items.filter(i => i.type === InnovationType.PROCESS_OPTIMIZATION).length;
         
         return {
             name: labelMap[status],
             "Novo Projeto": newProjects,
-            "Melhoria": improvements
+            "Melhoria": improvements,
+            "Otimização": optimizations
         };
     });
   }, [filteredInnovations]);
@@ -281,7 +287,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         {/* Innovation KPI */}
          <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Economia Total</p>
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Economia Aprovada</p>
               <p className="text-xl font-bold text-emerald-800">{formatCurrency(totalSavings)}</p>
             </div>
             <div className="h-8 w-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600">
@@ -359,6 +365,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                     <Legend />
                     <Bar dataKey="Novo Projeto" stackId="a" fill="#8b5cf6" />
                     <Bar dataKey="Melhoria" stackId="a" fill="#3b82f6" />
+                    <Bar dataKey="Otimização" stackId="a" fill="#f97316" />
                 </BarChart>
             </ResponsiveContainer>
            </div>

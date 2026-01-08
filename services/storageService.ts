@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from '../types';
 
@@ -39,9 +40,6 @@ export const fetchAppState = async (): Promise<AppState> => {
       .select('*')
       .order('created_at', { ascending: false });
     
-    // Note: If table doesn't exist yet, this might error gracefully or need handling
-    // We assume table exists based on SQL instructions provided.
-
     // Map DB columns (snake_case) to Types (camelCase)
     const projects: ProjectSession[] = (projectsData || []).map((p: any) => ({
       id: p.id,
@@ -72,9 +70,13 @@ export const fetchAppState = async (): Promise<AppState> => {
       title: inv.title,
       description: inv.description,
       type: inv.type,
-      currentCost: inv.current_cost,
-      projectedCost: inv.projected_cost,
-      costDifference: inv.cost_difference,
+      
+      calculationType: inv.calculation_type,
+      unitSavings: inv.unit_savings,
+      quantity: inv.quantity,
+      totalAnnualSavings: inv.total_annual_savings,
+      investmentCost: inv.investment_cost,
+
       status: inv.status,
       authorId: inv.author_id,
       createdAt: inv.created_at
@@ -98,14 +100,13 @@ export const addProject = async (project: ProjectSession): Promise<AppState> => 
       start_time: project.startTime,
       end_time: project.endTime,
       total_active_seconds: project.totalActiveSeconds,
-      pauses: project.pauses, // Supabase handles JSON array automatically if column is jsonb
+      pauses: project.pauses,
       status: project.status,
       notes: project.notes,
       user_id: project.userId
     }]);
 
     if (error) throw error;
-    
     return fetchAppState();
   } catch (error) {
     console.error("Failed to add project", error);
@@ -131,10 +132,20 @@ export const updateProject = async (project: ProjectSession): Promise<AppState> 
       .eq('id', project.id);
 
     if (error) throw error;
-
     return fetchAppState();
   } catch (error) {
     console.error("Failed to update project", error);
+    return fetchAppState();
+  }
+};
+
+export const deleteProject = async (id: string): Promise<AppState> => {
+  try {
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) throw error;
+    return fetchAppState();
+  } catch (error) {
+    console.error("Failed to delete project", error);
     return fetchAppState();
   }
 };
@@ -151,10 +162,20 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
     }]);
 
     if (error) throw error;
-
     return fetchAppState();
   } catch (error) {
     console.error("Failed to add issue", error);
+    return fetchAppState();
+  }
+};
+
+export const deleteIssue = async (id: string): Promise<AppState> => {
+  try {
+    const { error } = await supabase.from('issues').delete().eq('id', id);
+    if (error) throw error;
+    return fetchAppState();
+  } catch (error) {
+    console.error("Failed to delete issue", error);
     return fetchAppState();
   }
 };
@@ -166,9 +187,13 @@ export const addInnovation = async (innovation: InnovationRecord): Promise<AppSt
       title: innovation.title,
       description: innovation.description,
       type: innovation.type,
-      current_cost: innovation.currentCost,
-      projected_cost: innovation.projectedCost,
-      cost_difference: innovation.costDifference,
+      
+      calculation_type: innovation.calculationType,
+      unit_savings: innovation.unitSavings,
+      quantity: innovation.quantity,
+      total_annual_savings: innovation.totalAnnualSavings,
+      investment_cost: innovation.investmentCost,
+
       status: innovation.status,
       author_id: innovation.authorId,
       created_at: innovation.createdAt
@@ -197,6 +222,17 @@ export const updateInnovationStatus = async (id: string, status: string): Promis
   }
 };
 
+export const deleteInnovation = async (id: string): Promise<AppState> => {
+  try {
+    const { error } = await supabase.from('innovations').delete().eq('id', id);
+    if (error) throw error;
+    return fetchAppState();
+  } catch (error) {
+    console.error("Failed to delete innovation", error);
+    return fetchAppState();
+  }
+};
+
 // --- USER MANAGEMENT ---
 
 export const fetchUsers = async (): Promise<User[]> => {
@@ -212,7 +248,6 @@ export const fetchUsers = async (): Promise<User[]> => {
 
 export const registerUser = async (user: User): Promise<boolean> => {
   try {
-    // Check if user exists (client side check for simplicity, ideally DB constraint)
     const { data: existing } = await supabase
       .from('users')
       .select('id')
