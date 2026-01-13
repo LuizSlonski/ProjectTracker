@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Shield, User as UserIcon, CheckCircle, Loader2, Eye, Activity } from 'lucide-react';
+import { UserPlus, Shield, User as UserIcon, CheckCircle, Loader2, Eye, Activity, Briefcase } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { registerUser, fetchUsers } from '../services/storageService';
 
@@ -42,8 +42,9 @@ export const UserManagement: React.FC = () => {
       role
     };
 
-    const success = await registerUser(newUser);
-    if (success) {
+    const result = await registerUser(newUser);
+    
+    if (result.success) {
       setSuccessMsg(`Usuário ${name} criado com sucesso!`);
       await loadList(); // Refresh list
       // Reset form
@@ -51,18 +52,19 @@ export const UserManagement: React.FC = () => {
       setUsername('');
       setPassword('');
     } else {
-      setErrorMsg('Erro ao criar usuário. Verifique se o nome de usuário já existe.');
+      // Show the specific error from the DB/Service
+      setErrorMsg(result.message || 'Erro ao criar usuário.');
     }
     setIsRegistering(false);
   };
 
   const getRoleIcon = (role: UserRole) => {
       switch(role) {
-          case 'GESTOR': return <Shield className="w-3 h-3" />;
-          case 'CEO': return <Shield className="w-3 h-3 text-yellow-600" />;
-          case 'PROCESSOS': return <Activity className="w-3 h-3" />;
-          case 'QUALIDADE': return <Eye className="w-3 h-3" />;
-          default: return <UserIcon className="w-3 h-3" />;
+          case 'GESTOR': return <Shield className="w-3 h-3 text-blue-600" />;
+          case 'CEO': return <Briefcase className="w-3 h-3 text-yellow-600" />;
+          case 'PROCESSOS': return <Activity className="w-3 h-3 text-purple-600" />;
+          case 'QUALIDADE': return <Eye className="w-3 h-3 text-red-600" />;
+          default: return <UserIcon className="w-3 h-3 text-gray-600" />;
       }
   };
 
@@ -82,8 +84,13 @@ export const UserManagement: React.FC = () => {
         )}
         
         {errorMsg && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
-            {errorMsg}
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">
+            <strong>Erro:</strong> {errorMsg}
+            {errorMsg.includes('enum') || errorMsg.includes('check constraint') ? (
+                <div className="mt-2 text-xs text-red-600">
+                    Dica: O banco de dados não reconhece este cargo. Atualize o ENUM ou Constraint da tabela 'users' no Supabase.
+                </div>
+            ) : null}
           </div>
         )}
 

@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord, CalculationType } from '../types';
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://otajfsjtpucdmkwgmeku.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_tUhxD-ixI7mhxhvB5FYVGQ_FCkLGa6h';
+const SUPABASE_URL = 'https://vfctdeaeahhermgzlaml.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_9vJxl7Ogf1ZZ9mlNyHj6DQ_pW3HJhK2';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -259,7 +259,8 @@ export const fetchUsers = async (): Promise<User[]> => {
   }
 };
 
-export const registerUser = async (user: User): Promise<boolean> => {
+// Updated signature to return detail info
+export const registerUser = async (user: User): Promise<{ success: boolean; message?: string }> => {
   try {
     const { data: existing } = await supabase
       .from('users')
@@ -267,7 +268,9 @@ export const registerUser = async (user: User): Promise<boolean> => {
       .eq('username', user.username)
       .single();
 
-    if (existing) return false;
+    if (existing) {
+        return { success: false, message: 'Nome de usuário já existe.' };
+    }
 
     const { error } = await supabase.from('users').insert([{
       id: user.id,
@@ -277,11 +280,15 @@ export const registerUser = async (user: User): Promise<boolean> => {
       role: user.role
     }]);
 
-    if (error) throw error;
-    return true;
-  } catch (error) {
+    if (error) {
+        // Return the specific DB error to help debugging
+        return { success: false, message: `Erro DB: ${error.message}` };
+    }
+    
+    return { success: true };
+  } catch (error: any) {
     console.error("Failed to register user", error);
-    return false;
+    return { success: false, message: error.message || 'Erro desconhecido.' };
   }
 };
 
