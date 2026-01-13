@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Filter, Calendar, Search, Clock, Hash, User as UserIcon, Truck, Trash2 } from 'lucide-react';
-import { AppState, ProjectType, User } from '../types';
+import { Filter, Calendar, Search, Clock, Hash, User as UserIcon, Truck, Trash2, Layers, Box, Eye, X, FileCheck, FileX } from 'lucide-react';
+import { AppState, ProjectType, User, VariationRecord, ProjectSession } from '../types';
 import { PROJECT_TYPES } from '../constants';
 import { fetchUsers } from '../services/storageService';
 
@@ -17,6 +17,9 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+
+  // State for the Variations Modal
+  const [selectedProject, setSelectedProject] = useState<ProjectSession | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -51,12 +54,6 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
     return `${h}h ${m}m`;
   };
 
-  const formatPauseDuration = (seconds: number) => {
-     if (seconds < 60) return `${seconds}s`;
-     const m = Math.floor(seconds / 60);
-     return `${m}m`;
-  };
-
   const formatDate = (isoString: string) => {
     if (!isoString) return '-';
     return new Date(isoString).toLocaleString('pt-BR', {
@@ -66,6 +63,13 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const getVariationCounts = (variations: VariationRecord[]) => {
+      if (!variations) return { parts: 0, assemblies: 0 };
+      const parts = variations.filter(v => v.type === 'Peça').length;
+      const assemblies = variations.filter(v => v.type === 'Montagem').length;
+      return { parts, assemblies };
   };
 
   const isGestor = currentUser.role === 'GESTOR';
@@ -128,67 +132,105 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
             <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
               <tr>
                 <th className="p-4">Status</th>
-                {isGestor && <th className="p-4">Projetista</th>}
-                <th className="p-4">NS</th>
-                <th className="p-4">Código</th>
-                <th className="p-4">Tipo</th>
-                <th className="p-4">Implemento</th>
-                <th className="p-4">Início</th>
-                <th className="p-4">Fim</th>
+                <th className="p-4">Projetista</th>
+                <th className="p-4">Cliente</th>
+                <th className="p-4">NS / Cód.</th>
+                <th className="p-4">Variações (Total)</th>
+                <th className="p-4">Tipo / Impl.</th>
+                <th className="p-4">Início / Fim</th>
                 <th className="p-4">Duração</th>
                 {isGestor && <th className="p-4 text-center">Ações</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProjects.map((project) => (
+              {filteredProjects.map((project) => {
+                const { parts, assemblies } = getVariationCounts(project.variations);
+                const totalVariations = (project.variations || []).length;
+                
+                return (
                 <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                       project.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {project.status === 'COMPLETED' ? 'Concluído' : 'Em Andamento'}
+                      {project.status === 'COMPLETED' ? 'Concluído' : 'Em And.'}
                     </span>
                   </td>
-                  {isGestor && (
-                    <td className="p-4">
-                      <div className="flex items-center text-gray-700 font-medium">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs mr-2">
-                          <UserIcon className="w-3 h-3" />
-                        </div>
-                        {usersMap[project.userId || ''] || 'Desconhecido'}
-                      </div>
-                    </td>
-                  )}
-                  <td className="p-4 font-mono font-bold text-gray-800">{project.ns}</td>
-                  <td className="p-4 text-gray-600 flex items-center">
-                     {project.projectCode ? (
-                       <>
-                         <Hash className="w-3 h-3 mr-1 text-gray-400" />
-                         {project.projectCode}
-                       </>
-                     ) : '-'}
-                  </td>
+                  
+                  {/* Projetista */}
                   <td className="p-4">
-                     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
-                      project.type === 'Variação' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
-                      project.type === 'Liberação' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                      'bg-amber-50 border-amber-100 text-amber-700'
-                    }`}>
-                      {project.type}
-                    </span>
+                    <div className="flex items-center text-gray-700 font-medium">
+                        <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs mr-2 font-bold border border-blue-100">
+                        {(usersMap[project.userId || ''] || '?').charAt(0)}
+                        </div>
+                        <span className="truncate max-w-[120px]" title={usersMap[project.userId || '']}>
+                            {usersMap[project.userId || ''] || 'Desconhecido'}
+                        </span>
+                    </div>
                   </td>
-                  <td className="p-4 text-gray-600">
-                    <div className="flex items-center">
-                      <Truck className="w-3 h-3 mr-1 text-gray-400" />
+
+                  {/* Cliente */}
+                  <td className="p-4 text-gray-600 font-medium truncate max-w-[150px]" title={project.clientName}>
+                    {project.clientName || '-'}
+                  </td>
+
+                  {/* NS e Código */}
+                  <td className="p-4">
+                     <div className="font-mono font-bold text-gray-800">{project.ns}</div>
+                     {project.projectCode && (
+                         <div className="text-xs text-blue-600 font-mono mt-0.5">{project.projectCode}</div>
+                     )}
+                  </td>
+
+                  {/* Variações Count Simplificado + Botão */}
+                  <td className="p-4">
+                    {totalVariations === 0 ? (
+                        <span className="text-gray-400 text-xs">-</span>
+                    ) : (
+                        <div>
+                            <div className="text-sm font-bold text-gray-800 flex items-center">
+                                {totalVariations} <span className="text-xs font-normal text-gray-500 ml-1">Cód. Criados</span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                                <div className="text-[10px] text-gray-500 flex items-center gap-2">
+                                    <span className={parts > 0 ? "text-blue-600 font-medium" : ""}>{parts} Pç</span>
+                                    <span className="text-gray-300">|</span>
+                                    <span className={assemblies > 0 ? "text-orange-600 font-medium" : ""}>{assemblies} Mont</span>
+                                </div>
+                                <button 
+                                    onClick={() => setSelectedProject(project)}
+                                    className="ml-2 p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title="Ver lista de variações"
+                                >
+                                    <Eye className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                  </td>
+
+                  {/* Tipo e Implemento */}
+                  <td className="p-4">
+                     <div className="text-xs font-bold text-gray-700">{project.type}</div>
+                     <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <Truck className="w-3 h-3 mr-1" />
                       {project.implementType || '-'}
                     </div>
                   </td>
-                  <td className="p-4 text-gray-600">{formatDate(project.startTime)}</td>
-                  <td className="p-4 text-gray-600">{project.endTime ? formatDate(project.endTime) : '-'}</td>
-                  <td className="p-4 font-medium text-gray-800 flex items-center">
-                    <Clock className="w-4 h-4 mr-1 text-gray-400" />
-                    {formatDuration(project.totalActiveSeconds)}
+
+                  {/* Datas */}
+                  <td className="p-4 text-xs text-gray-500">
+                      <div><span className="font-semibold">I:</span> {formatDate(project.startTime)}</div>
+                      {project.endTime && <div><span className="font-semibold">F:</span> {formatDate(project.endTime)}</div>}
                   </td>
+
+                  <td className="p-4 font-medium text-gray-800">
+                    <div className="flex items-center">
+                        <Clock className="w-4 h-4 mr-1 text-gray-400" />
+                        {formatDuration(project.totalActiveSeconds)}
+                    </div>
+                  </td>
+
                   {isGestor && (
                     <td className="p-4 text-center">
                       <button 
@@ -201,10 +243,10 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
                     </td>
                   )}
                 </tr>
-              ))}
+              )})}
               {filteredProjects.length === 0 && (
                 <tr>
-                  <td colSpan={isGestor ? 10 : 9} className="p-12 text-center text-gray-400">
+                  <td colSpan={10} className="p-12 text-center text-gray-400">
                     Nenhum projeto encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -213,6 +255,81 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
           </table>
         </div>
       </div>
+
+      {/* Variations Modal */}
+      {selectedProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-800">Detalhes das Variações</h3>
+                        <p className="text-sm text-gray-500">NS: <span className="font-mono font-bold text-gray-700">{selectedProject.ns}</span> • Cliente: {selectedProject.clientName || 'N/A'}</p>
+                    </div>
+                    <button 
+                        onClick={() => setSelectedProject(null)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                
+                <div className="p-0 overflow-y-auto flex-1">
+                    <table className="w-full text-sm text-left">
+                         <thead className="bg-white text-gray-600 font-semibold border-b border-gray-200 sticky top-0 shadow-sm">
+                             <tr>
+                                 <th className="p-4">Código Antigo</th>
+                                 <th className="p-4">Descrição</th>
+                                 <th className="p-4">Código Novo</th>
+                                 <th className="p-4">Tipo</th>
+                                 <th className="p-4 text-center">Arquivos</th>
+                             </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-100">
+                             {selectedProject.variations.map((v) => (
+                                 <tr key={v.id} className="hover:bg-gray-50">
+                                     <td className="p-4 font-mono text-gray-500">{v.oldCode || '-'}</td>
+                                     <td className="p-4 text-gray-800 font-medium">{v.description}</td>
+                                     <td className="p-4 font-mono text-blue-600 font-bold">{v.newCode || '-'}</td>
+                                     <td className="p-4">
+                                         <span className={`px-2 py-0.5 rounded text-xs ${v.type === 'Montagem' ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-700'}`}>
+                                             {v.type}
+                                         </span>
+                                     </td>
+                                     <td className="p-4 text-center">
+                                        {v.filesGenerated ? (
+                                            <span className="inline-flex items-center text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100">
+                                                <FileCheck className="w-3 h-3 mr-1" /> OK
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center text-xs font-bold text-red-400 bg-red-50 px-2 py-1 rounded border border-red-100">
+                                                <FileX className="w-3 h-3 mr-1" /> Pendente
+                                            </span>
+                                        )}
+                                     </td>
+                                 </tr>
+                             ))}
+                             {selectedProject.variations.length === 0 && (
+                                 <tr>
+                                     <td colSpan={5} className="p-8 text-center text-gray-400 italic">
+                                         Nenhuma variação registrada neste projeto.
+                                     </td>
+                                 </tr>
+                             )}
+                         </tbody>
+                    </table>
+                </div>
+
+                <div className="p-4 border-t border-gray-100 bg-gray-50 text-right">
+                    <button 
+                        onClick={() => setSelectedProject(null)}
+                        className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium transition-colors"
+                    >
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
