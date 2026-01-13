@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb, Shield, Activity, Eye } from 'lucide-react';
 import { ProjectTracker } from './components/ProjectTracker';
 import { IssueReporter } from './components/IssueReporter';
 import { IssueHistory } from './components/IssueHistory';
@@ -44,18 +45,46 @@ const App: React.FC = () => {
       setIsLoading(false);
     };
     load();
-  }, [currentUser]); // Reload if user changes (or initial load)
+  }, [currentUser]); 
+
+  // --- PERMISSIONS LOGIC ---
+  
+  // Who can see ALL project history?
+  const canSeeAllHistory = useMemo(() => {
+      if (!currentUser) return false;
+      return ['GESTOR', 'CEO', 'PROCESSOS', 'QUALIDADE'].includes(currentUser.role);
+  }, [currentUser]);
+
+  // Who can manage Innovations? (CEO, Processes, Manager, Designer)
+  const canSeeInnovations = useMemo(() => {
+      if (!currentUser) return false;
+      return ['GESTOR', 'CEO', 'PROCESSOS', 'PROJETISTA'].includes(currentUser.role);
+  }, [currentUser]);
+  
+  // Who can see Dashboard? (Everyone)
+  // Who can see Team? (Manager)
 
   // Filter Data based on User Role
   const displayData = useMemo(() => {
     if (!currentUser) return { projects: [], issues: [], innovations: [] };
 
-    // GESTOR sees everything
-    if (currentUser.role === 'GESTOR') {
+    const role = currentUser.role;
+
+    // "Super Viewers" - See everything in DB
+    if (['GESTOR', 'CEO', 'PROCESSOS'].includes(role)) {
       return data;
     }
 
-    // PROJETISTA sees only their own items (mostly), but might see shared Innovations
+    // QUALITY - Sees all Issues (to analyze), All Projects (for context in charts), No Innovations
+    if (role === 'QUALIDADE') {
+        return {
+            projects: data.projects, // Needed for charts context
+            issues: data.issues,
+            innovations: [] // Not relevant
+        };
+    }
+
+    // PROJETISTA - Sees own data + All Innovations (usually shared knowledge)
     return {
       projects: data.projects.filter(p => p.userId === currentUser.id),
       issues: data.issues.filter(i => i.reportedBy === currentUser.id),
@@ -88,7 +117,7 @@ const App: React.FC = () => {
         const updatedData = await updateProject(project);
         setData(updatedData);
         if (project.status === 'COMPLETED') {
-             alert(`Projeto NS ${project.ns} finalizado com sucesso!`);
+             // Optional alert
         }
     } catch (e) {
         alert("Erro ao atualizar projeto.");
@@ -155,8 +184,7 @@ const App: React.FC = () => {
       alert('Inovação registrada com sucesso!');
     } catch (e) {
       console.error(e);
-      alert("Erro ao salvar inovação. Verifique se o banco de dados foi atualizado com as novas colunas.");
-      // Revert optimistic update by refetching
+      alert("Erro ao salvar inovação.");
       const revertedData = await fetchAppState();
       setData(revertedData);
     } finally {
@@ -237,16 +265,24 @@ const App: React.FC = () => {
             Painel de Controle
           </div>
           <p className="text-sm font-medium text-slate-200 truncate">{currentUser.name}</p>
-          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full mt-2 inline-block">
-            {currentUser.role}
-          </span>
+          <div className="flex items-center mt-2 gap-2">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full inline-block">
+                {currentUser.role}
+            </span>
+          </div>
         </div>
         <nav className="flex-1 mt-6 overflow-y-auto">
-          <NavItem id="tracker" label="Projetar" icon={PenTool} />
+          {['PROJETISTA', 'GESTOR'].includes(currentUser.role) && (
+             <NavItem id="tracker" label="Projetar" icon={PenTool} />
+          )}
+          
           <NavItem id="history" label="Histórico" icon={History} />
           <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
           <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
-          <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
+          
+          {canSeeInnovations && (
+             <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
+          )}
           
           {currentUser.role === 'GESTOR' && (
             <NavItem id="team" label="Gestão de Equipe" icon={Users} />
@@ -284,11 +320,15 @@ const App: React.FC = () => {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-slate-900 z-10 pt-20 md:hidden animate-in slide-in-from-right duration-200">
           <nav className="flex flex-col h-full overflow-y-auto">
-            <NavItem id="tracker" label="Projetar" icon={PenTool} />
+            {['PROJETISTA', 'GESTOR'].includes(currentUser.role) && (
+                <NavItem id="tracker" label="Projetar" icon={PenTool} />
+            )}
             <NavItem id="history" label="Histórico" icon={History} />
             <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
             <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
-            <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
+            {canSeeInnovations && (
+                <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
+            )}
             {currentUser.role === 'GESTOR' && (
                <NavItem id="team" label="Gestão de Equipe" icon={Users} />
             )}
@@ -335,7 +375,7 @@ const App: React.FC = () => {
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Histórico de Liberações</h2>
                 <p className="text-gray-500">
-                  {currentUser.role === 'GESTOR' 
+                  {canSeeAllHistory
                     ? "Visão geral de todas as liberações da equipe." 
                     : "Consulte suas liberações passadas."}
                 </p>
@@ -361,7 +401,7 @@ const App: React.FC = () => {
                  <div>
                     <h2 className="text-2xl font-bold text-gray-800">Painel de Desempenho</h2>
                     <p className="text-gray-500">
-                      {currentUser.role === 'GESTOR' ? "Indicadores globais da equipe." : "Seus indicadores de produtividade."}
+                      {canSeeAllHistory ? "Indicadores globais da equipe." : "Seus indicadores de produtividade."}
                     </p>
                  </div>
               </div>
@@ -408,7 +448,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'innovations' && (
+          {activeTab === 'innovations' && canSeeInnovations && (
              <InnovationManager 
                 innovations={displayData.innovations} 
                 onAdd={handleInnovationAdd}

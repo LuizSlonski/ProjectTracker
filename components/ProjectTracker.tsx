@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, Clock, AlertCircle, Timer, Hash, Truck, Maximize2, Briefcase, ChevronRight, Plus, FileCheck, FileX, Trash2, Building, Layers, CheckSquare } from 'lucide-react';
+import { Play, Pause, Square, Clock, AlertCircle, Timer, Hash, Truck, Maximize2, Briefcase, ChevronRight, Plus, FileCheck, FileX, Trash2, Building, Layers, CheckSquare, Edit3 } from 'lucide-react';
 import { ProjectType, ProjectSession, PauseRecord, ImplementType, VariationRecord } from '../types';
 import { PROJECT_TYPES, IMPLEMENT_TYPES, FLOORING_TYPES } from '../constants';
 
@@ -228,6 +228,17 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
       onUpdate(updatedProject);
   };
 
+  const handleUpdateActiveProjectCode = (newCode: string) => {
+      if (!activeProject) return;
+      const updated = { ...activeProject, projectCode: newCode };
+      setActiveProject(updated);
+  };
+
+  const saveProjectCode = () => {
+      if (!activeProject) return;
+      onUpdate(activeProject);
+  };
+
   const sendTeamsNotification = async (project: ProjectSession) => {
     if (!TEAMS_WEBHOOK_URL || TEAMS_WEBHOOK_URL.includes("YOUR_WEBHOOK_URL_HERE")) return;
 
@@ -342,7 +353,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cód. Projeto</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cód. Projeto (Opcional)</label>
                   <div className="relative">
                     <Hash className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
                     <input 
@@ -419,7 +430,21 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                     <div className="text-right">
                         <div className="font-bold text-lg text-gray-700">{activeProject.ns}</div>
                         <div className="text-xs text-gray-500 font-semibold">{activeProject.clientName}</div>
-                        <div className="text-xs text-gray-400">{activeProject.implementType} {activeProject.flooringType ? `• ${activeProject.flooringType}` : ''}</div>
+                        <div className="text-xs text-gray-400 flex flex-col items-end mt-1">
+                            <span>{activeProject.implementType} {activeProject.flooringType ? `• ${activeProject.flooringType}` : ''}</span>
+                            <div className="mt-1 flex items-center">
+                                <span className="mr-1 text-gray-500">Cod:</span>
+                                <input 
+                                    type="text" 
+                                    value={activeProject.projectCode || ''}
+                                    onChange={(e) => handleUpdateActiveProjectCode(e.target.value)}
+                                    onBlur={saveProjectCode}
+                                    placeholder="Inserir Código"
+                                    className="border-b border-gray-300 text-right text-xs focus:border-blue-500 focus:outline-none w-24 bg-transparent"
+                                />
+                                <Edit3 className="w-3 h-3 ml-1 text-gray-400" />
+                            </div>
+                        </div>
                     </div>
                 </div>
 

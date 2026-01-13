@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Shield, User as UserIcon, CheckCircle, Loader2 } from 'lucide-react';
+import { UserPlus, Shield, User as UserIcon, CheckCircle, Loader2, Eye, Activity } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { registerUser, fetchUsers } from '../services/storageService';
 
@@ -53,6 +54,16 @@ export const UserManagement: React.FC = () => {
       setErrorMsg('Erro ao criar usuário. Verifique se o nome de usuário já existe.');
     }
     setIsRegistering(false);
+  };
+
+  const getRoleIcon = (role: UserRole) => {
+      switch(role) {
+          case 'GESTOR': return <Shield className="w-3 h-3" />;
+          case 'CEO': return <Shield className="w-3 h-3 text-yellow-600" />;
+          case 'PROCESSOS': return <Activity className="w-3 h-3" />;
+          case 'QUALIDADE': return <Eye className="w-3 h-3" />;
+          default: return <UserIcon className="w-3 h-3" />;
+      }
   };
 
   return (
@@ -117,6 +128,9 @@ export const UserManagement: React.FC = () => {
             >
               <option value="PROJETISTA">Projetista</option>
               <option value="GESTOR">Gestor</option>
+              <option value="CEO">CEO</option>
+              <option value="PROCESSOS">Processos</option>
+              <option value="QUALIDADE">Qualidade</option>
             </select>
           </div>
           <div className="md:col-span-2">
@@ -157,10 +171,8 @@ export const UserManagement: React.FC = () => {
                 </td>
                 <td className="p-4 text-gray-600">{u.username}</td>
                 <td className="p-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1 ${
-                    u.role === 'GESTOR' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {u.role === 'GESTOR' ? <Shield className="w-3 h-3" /> : <UserIcon className="w-3 h-3" />}
+                  <span className={`px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1 bg-gray-100 text-gray-700`}>
+                    {getRoleIcon(u.role)}
                     {u.role}
                   </span>
                 </td>

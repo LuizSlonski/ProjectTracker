@@ -25,6 +25,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const isQualityRole = currentUser.role === 'QUALIDADE';
+
   useEffect(() => {
     // Load users for the manager chart
     const load = async () => {
@@ -262,157 +264,77 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             />
           </div>
         </div>
-        <button 
-          onClick={handleExportCSV}
-          className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors ml-auto md:ml-0"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          CSV
-        </button>
-      </div>
-
-      {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {averageTimes.length > 0 && averageTimes.map((stat) => (
-          <div key={stat.type} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Média {stat.type}</p>
-              <p className="text-xl font-bold text-gray-800">{formatDuration(stat.avgSeconds)}</p>
-            </div>
-            <div className="h-8 w-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-        ))}
-        {/* Innovation KPI */}
-         <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Economia Aprovada</p>
-              <p className="text-xl font-bold text-emerald-800">{formatCurrency(totalSavings)}</p>
-            </div>
-            <div className="h-8 w-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600">
-              <TrendingDown className="w-4 h-4" />
-            </div>
-          </div>
-      </div>
-
-      {/* AI Insights Section */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-100">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-indigo-900 flex items-center">
-            <Sparkles className="w-5 h-5 mr-2 text-indigo-600" />
-            Análise Inteligente (IA)
-          </h3>
+        {!isQualityRole && (
           <button 
-            onClick={handleAiAnalysis}
-            disabled={isLoadingAi}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            onClick={handleExportCSV}
+            className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors ml-auto md:ml-0"
           >
-            {isLoadingAi ? 'Analisando...' : 'Gerar Relatório'}
+            <Download className="w-4 h-4 mr-2" />
+            CSV
           </button>
-        </div>
-        
-        {aiAnalysis ? (
-          <div className="prose prose-sm max-w-none text-indigo-900 bg-white/50 p-4 rounded-lg">
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{aiAnalysis}</pre>
-          </div>
-        ) : (
-          <p className="text-indigo-600/70 text-sm">
-            Clique em "Gerar Relatório" para que a IA analise o desempenho do período selecionado.
-          </p>
         )}
       </div>
 
+      {/* KPI Section */}
+      {!isQualityRole && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {averageTimes.length > 0 && averageTimes.map((stat) => (
+            <div key={stat.type} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Média {stat.type}</p>
+                <p className="text-xl font-bold text-gray-800">{formatDuration(stat.avgSeconds)}</p>
+              </div>
+              <div className="h-8 w-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+          ))}
+          {/* Innovation KPI */}
+           <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Economia Aprovada</p>
+                <p className="text-xl font-bold text-emerald-800">{formatCurrency(totalSavings)}</p>
+              </div>
+              <div className="h-8 w-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600">
+                <TrendingDown className="w-4 h-4" />
+              </div>
+            </div>
+        </div>
+      )}
+
+      {/* AI Insights Section */}
+      {!isQualityRole && (
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-100">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-indigo-900 flex items-center">
+              <Sparkles className="w-5 h-5 mr-2 text-indigo-600" />
+              Análise Inteligente (IA)
+            </h3>
+            <button 
+              onClick={handleAiAnalysis}
+              disabled={isLoadingAi}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            >
+              {isLoadingAi ? 'Analisando...' : 'Gerar Relatório'}
+            </button>
+          </div>
+          
+          {aiAnalysis ? (
+            <div className="prose prose-sm max-w-none text-indigo-900 bg-white/50 p-4 rounded-lg">
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{aiAnalysis}</pre>
+            </div>
+          ) : (
+            <p className="text-indigo-600/70 text-sm">
+              Clique em "Gerar Relatório" para que a IA analise o desempenho do período selecionado.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Releases per Month (Bar Chart) */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-          <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-            <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
-            Liberações por Mês
-          </h3>
-          <div className="h-[250px] w-full">
-            {barData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ fill: '#f3f4f6' }} />
-                  <Bar dataKey="liberacoes" name="Liberações" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                Sem dados para exibir.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Innovations Chart */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-          <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-            <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
-            Status de Inovações
-          </h3>
-           <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={innovationChartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} style={{fontSize: '12px'}} />
-                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{ fill: '#f3f4f6' }} />
-                    <Legend />
-                    <Bar dataKey="Novo Projeto" stackId="a" fill="#8b5cf6" />
-                    <Bar dataKey="Melhoria" stackId="a" fill="#3b82f6" />
-                    <Bar dataKey="Otimização" stackId="a" fill="#f97316" />
-                </BarChart>
-            </ResponsiveContainer>
-           </div>
-        </div>
-
-        {/* Implement Type (Pie Chart) */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-          <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-            <Truck className="w-5 h-5 mr-2 text-orange-500" />
-            Distribuição por Implemento
-          </h3>
-          <div className="h-[250px] w-full">
-            {implementData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={implementData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {implementData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend 
-                    layout="vertical" 
-                    verticalAlign="middle" 
-                    align="right"
-                    wrapperStyle={{ fontSize: '12px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                Sem dados para exibir.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Issue Distribution (Pie Chart) */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
+        
+        {/* Issue Distribution (Pie Chart) - VISIBLE TO QUALITY AND OTHERS */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px] col-span-1 md:col-span-2 lg:col-span-1">
           <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
             <PieIcon className="w-5 h-5 mr-2 text-red-500" />
             Distribuição de Problemas
@@ -450,6 +372,99 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             )}
           </div>
         </div>
+
+        {/* Releases per Month (Bar Chart) - HIDDEN FOR QUALITY */}
+        {!isQualityRole && (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
+            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
+                Liberações por Mês
+            </h3>
+            <div className="h-[250px] w-full">
+                {barData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={barData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{ fill: '#f3f4f6' }} />
+                    <Bar dataKey="liberacoes" name="Liberações" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                    </BarChart>
+                </ResponsiveContainer>
+                ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                    Sem dados para exibir.
+                </div>
+                )}
+            </div>
+            </div>
+        )}
+
+        {/* Innovations Chart - HIDDEN FOR QUALITY */}
+        {!isQualityRole && (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
+            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
+                <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
+                Status de Inovações
+            </h3>
+            <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={innovationChartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" tickLine={false} axisLine={false} style={{fontSize: '12px'}} />
+                        <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                        <Tooltip cursor={{ fill: '#f3f4f6' }} />
+                        <Legend />
+                        <Bar dataKey="Novo Projeto" stackId="a" fill="#8b5cf6" />
+                        <Bar dataKey="Melhoria" stackId="a" fill="#3b82f6" />
+                        <Bar dataKey="Otimização" stackId="a" fill="#f97316" />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+            </div>
+        )}
+
+        {/* Implement Type (Pie Chart) - HIDDEN FOR QUALITY */}
+        {!isQualityRole && (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
+            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
+                <Truck className="w-5 h-5 mr-2 text-orange-500" />
+                Distribuição por Implemento
+            </h3>
+            <div className="h-[250px] w-full">
+                {implementData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                    <Pie
+                        data={implementData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                    >
+                        {implementData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend 
+                        layout="vertical" 
+                        verticalAlign="middle" 
+                        align="right"
+                        wrapperStyle={{ fontSize: '12px' }}
+                    />
+                    </PieChart>
+                </ResponsiveContainer>
+                ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                    Sem dados para exibir.
+                </div>
+                )}
+            </div>
+            </div>
+        )}
 
         {/* Manager Only: Releases by Designer */}
         {currentUser.role === 'GESTOR' && (

@@ -35,7 +35,7 @@ export enum CalculationType {
   ONE_TIME = 'Valor Único / Fixo'
 }
 
-export type UserRole = 'GESTOR' | 'PROJETISTA';
+export type UserRole = 'GESTOR' | 'PROJETISTA' | 'CEO' | 'QUALIDADE' | 'PROCESSOS';
 
 export interface User {
   id: string;
