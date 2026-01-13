@@ -47,12 +47,32 @@ const App: React.FC = () => {
     load();
   }, [currentUser]); 
 
+  // Auto-redirect based on role logic
+  useEffect(() => {
+      if (currentUser) {
+          if (currentUser.role === 'QUALIDADE') {
+              setActiveTab('issues');
+          } else if (currentUser.role === 'PROCESSOS') {
+              setActiveTab('innovations');
+          } else {
+              // GESTOR, CEO, PROJETISTA default to tracker
+              setActiveTab('tracker');
+          }
+      }
+  }, [currentUser]);
+
   // --- PERMISSIONS LOGIC ---
   
   // Who can see ALL project history?
   const canSeeAllHistory = useMemo(() => {
       if (!currentUser) return false;
-      return ['GESTOR', 'CEO', 'PROCESSOS', 'QUALIDADE'].includes(currentUser.role);
+      return ['GESTOR', 'CEO'].includes(currentUser.role);
+  }, [currentUser]);
+
+  const canUseTracker = useMemo(() => {
+      if (!currentUser) return false;
+      // Quality and Process CANNOT use tracker or see history
+      return ['PROJETISTA', 'GESTOR', 'CEO'].includes(currentUser.role);
   }, [currentUser]);
 
   // Who can manage Innovations? (CEO, Processes, Manager, Designer)
@@ -219,6 +239,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    // Reset to tracker but effective login will handle redirection
     setActiveTab('tracker');
   };
 
@@ -272,11 +293,14 @@ const App: React.FC = () => {
           </div>
         </div>
         <nav className="flex-1 mt-6 overflow-y-auto">
-          {['PROJETISTA', 'GESTOR'].includes(currentUser.role) && (
+          {canUseTracker && (
              <NavItem id="tracker" label="Projetar" icon={PenTool} />
           )}
           
-          <NavItem id="history" label="Histórico" icon={History} />
+          {canUseTracker && (
+            <NavItem id="history" label="Histórico" icon={History} />
+          )}
+
           <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
           <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
           
@@ -320,10 +344,12 @@ const App: React.FC = () => {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-slate-900 z-10 pt-20 md:hidden animate-in slide-in-from-right duration-200">
           <nav className="flex flex-col h-full overflow-y-auto">
-            {['PROJETISTA', 'GESTOR'].includes(currentUser.role) && (
+            {canUseTracker && (
                 <NavItem id="tracker" label="Projetar" icon={PenTool} />
             )}
-            <NavItem id="history" label="Histórico" icon={History} />
+            {canUseTracker && (
+                <NavItem id="history" label="Histórico" icon={History} />
+            )}
             <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
             <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
             {canSeeInnovations && (
@@ -354,7 +380,7 @@ const App: React.FC = () => {
         )}
         <div className="max-w-5xl mx-auto">
           {/* Tracker Tab */}
-          <div className={activeTab === 'tracker' ? 'block space-y-6' : 'hidden'}>
+          <div className={activeTab === 'tracker' && canUseTracker ? 'block space-y-6' : 'hidden'}>
             <div className="mb-6 flex justify-between items-end">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">Área de Projeto</h2>
@@ -370,7 +396,7 @@ const App: React.FC = () => {
             />
           </div>
 
-          {activeTab === 'history' && (
+          {activeTab === 'history' && canUseTracker && (
             <div className="space-y-6">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Histórico de Liberações</h2>

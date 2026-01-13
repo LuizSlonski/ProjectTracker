@@ -25,7 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const isQualityRole = currentUser.role === 'QUALIDADE';
+  const isRestrictedRole = currentUser.role === 'QUALIDADE' || currentUser.role === 'PROCESSOS';
 
   useEffect(() => {
     // Load users for the manager chart
@@ -264,7 +264,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             />
           </div>
         </div>
-        {!isQualityRole && (
+        {!isRestrictedRole && (
           <button 
             onClick={handleExportCSV}
             className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors ml-auto md:ml-0"
@@ -276,7 +276,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       </div>
 
       {/* KPI Section */}
-      {!isQualityRole && (
+      {!isRestrictedRole && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {averageTimes.length > 0 && averageTimes.map((stat) => (
             <div key={stat.type} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
@@ -303,7 +303,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       )}
 
       {/* AI Insights Section */}
-      {!isQualityRole && (
+      {!isRestrictedRole && (
         <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-100">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-indigo-900 flex items-center">
@@ -333,7 +333,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Issue Distribution (Pie Chart) - VISIBLE TO QUALITY AND OTHERS */}
+        {/* Issue Distribution (Pie Chart) - VISIBLE TO EVERYONE */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px] col-span-1 md:col-span-2 lg:col-span-1">
           <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
             <PieIcon className="w-5 h-5 mr-2 text-red-500" />
@@ -373,8 +373,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
           </div>
         </div>
 
-        {/* Releases per Month (Bar Chart) - HIDDEN FOR QUALITY */}
-        {!isQualityRole && (
+        {/* Releases per Month (Bar Chart) - HIDDEN FOR QUALITY & PROCESSES */}
+        {!isRestrictedRole && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
             <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
                 <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
@@ -401,7 +401,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         )}
 
         {/* Innovations Chart - HIDDEN FOR QUALITY */}
-        {!isQualityRole && (
+        {currentUser.role !== 'QUALIDADE' && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
             <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
                 <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
@@ -424,8 +424,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             </div>
         )}
 
-        {/* Implement Type (Pie Chart) - HIDDEN FOR QUALITY */}
-        {!isQualityRole && (
+        {/* Implement Type (Pie Chart) - HIDDEN FOR QUALITY & PROCESSES */}
+        {!isRestrictedRole && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
             <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
                 <Truck className="w-5 h-5 mr-2 text-orange-500" />

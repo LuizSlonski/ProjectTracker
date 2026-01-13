@@ -51,15 +51,33 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
         setElapsedSeconds(0);
         return;
       }
-      const now = Date.now();
+
+      // Check if currently paused (has an open pause at the end)
+      const lastPause = activeProject.pauses.length > 0 ? activeProject.pauses[activeProject.pauses.length - 1] : null;
+      const isCurrentlyPaused = lastPause && lastPause.durationSeconds === -1;
+
       const start = new Date(activeProject.startTime).getTime();
-      const diffTotal = Math.floor((now - start) / 1000);
-      const totalClosedPauses = activeProject.pauses.reduce((acc, p) => acc + p.durationSeconds, 0);
-      setElapsedSeconds(Math.max(0, diffTotal - totalClosedPauses));
+      
+      // Calculate total duration of PREVIOUS closed pauses only
+      const totalClosedPauses = activeProject.pauses.reduce((acc, p) => {
+        return acc + (p.durationSeconds > 0 ? p.durationSeconds : 0);
+      }, 0);
+
+      if (isCurrentlyPaused) {
+        // If paused, time shouldn't move. It stays fixed at (PauseStart - ProjectStart - ClosedPauses)
+        const pauseStart = new Date(lastPause.timestamp).getTime();
+        const fixedDiff = Math.floor((pauseStart - start) / 1000);
+        setElapsedSeconds(Math.max(0, fixedDiff - totalClosedPauses));
+      } else {
+        // If running, calculate based on Now
+        const now = Date.now();
+        const diffTotal = Math.floor((now - start) / 1000);
+        setElapsedSeconds(Math.max(0, diffTotal - totalClosedPauses));
+      }
     };
 
     if (activeProject && !showPauseModal) {
-      updateTimer();
+      updateTimer(); // Initial call
       timerRef.current = setInterval(updateTimer, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
