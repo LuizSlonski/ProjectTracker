@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, Clock, AlertCircle, Timer, Hash, Truck, Maximize2, Briefcase, ChevronRight, Plus, FileCheck, FileX, Trash2, Building, Layers } from 'lucide-react';
+import { Play, Pause, Square, Clock, AlertCircle, Timer, Hash, Truck, Maximize2, Briefcase, ChevronRight, Plus, FileCheck, FileX, Trash2, Building, Layers, CheckSquare } from 'lucide-react';
 import { ProjectType, ProjectSession, PauseRecord, ImplementType, VariationRecord } from '../types';
 import { PROJECT_TYPES, IMPLEMENT_TYPES, FLOORING_TYPES } from '../constants';
 
@@ -200,6 +200,22 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
       setVarNewCode('');
       setVarDesc('');
       setVarFiles(false);
+  };
+
+  const handleToggleVariationFiles = (id: string) => {
+      if (!activeProject) return;
+      
+      const updatedVariations = activeProject.variations.map(v => 
+        v.id === id ? { ...v, filesGenerated: !v.filesGenerated } : v
+      );
+
+      const updatedProject = {
+          ...activeProject,
+          variations: updatedVariations
+      };
+
+      setActiveProject(updatedProject);
+      onUpdate(updatedProject);
   };
 
   const handleDeleteVariation = (id: string) => {
@@ -487,14 +503,14 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                         </select>
                      </div>
                      <div className="md:col-span-1 flex items-center justify-center pb-2">
-                         <label className="flex items-center cursor-pointer" title="DXF/PDF Gerados?">
+                         <label className="flex items-center cursor-pointer" title="Marcar como já feito?">
                              <input 
                                 type="checkbox" 
                                 checked={varFiles}
                                 onChange={e => setVarFiles(e.target.checked)}
                                 className="w-4 h-4 text-purple-600 rounded mr-1"
                              />
-                             <span className="text-xs font-bold text-gray-600">Files</span>
+                             <span className="text-xs font-bold text-gray-600">Ok</span>
                          </label>
                      </div>
                      <div className="md:col-span-1">
@@ -532,10 +548,18 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                                          </span>
                                      </td>
                                      <td className="p-3 text-center">
-                                         {v.filesGenerated 
-                                            ? <FileCheck className="w-5 h-5 text-green-500 mx-auto" /> 
-                                            : <FileX className="w-5 h-5 text-gray-300 mx-auto" />
-                                         }
+                                         <button 
+                                            onClick={() => handleToggleVariationFiles(v.id)}
+                                            title={v.filesGenerated ? "Arquivos Gerados (Clique para desfazer)" : "Marcar arquivos como gerados"}
+                                            className={`flex items-center justify-center p-2 rounded mx-auto transition-colors ${
+                                                v.filesGenerated 
+                                                ? 'bg-green-100 text-green-600 hover:bg-green-200 shadow-sm' 
+                                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                            }`}
+                                         >
+                                            {v.filesGenerated ? <FileCheck className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                                            <span className="ml-1 text-xs font-bold">{v.filesGenerated ? 'OK' : 'Pendente'}</span>
+                                         </button>
                                      </td>
                                      <td className="p-3 text-right">
                                          <button 
