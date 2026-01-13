@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord, CalculationType } from '../types';
 
@@ -43,6 +44,8 @@ export const fetchAppState = async (): Promise<AppState> => {
     const projects: ProjectSession[] = (projectsData || []).map((p: any) => ({
       id: p.id,
       ns: p.ns,
+      clientName: p.client_name,
+      flooringType: p.flooring_type,
       projectCode: p.project_code,
       type: p.type,
       implementType: p.implement_type,
@@ -50,6 +53,7 @@ export const fetchAppState = async (): Promise<AppState> => {
       endTime: p.end_time,
       totalActiveSeconds: p.total_active_seconds,
       pauses: typeof p.pauses === 'string' ? JSON.parse(p.pauses) : (p.pauses || []),
+      variations: typeof p.variations === 'string' ? JSON.parse(p.variations) : (p.variations || []),
       status: p.status,
       notes: p.notes,
       userId: p.user_id
@@ -94,6 +98,8 @@ export const addProject = async (project: ProjectSession): Promise<AppState> => 
     const { error } = await supabase.from('projects').insert([{
       id: project.id,
       ns: project.ns,
+      client_name: project.clientName,
+      flooring_type: project.flooringType,
       project_code: project.projectCode,
       type: project.type,
       implement_type: project.implementType,
@@ -101,6 +107,7 @@ export const addProject = async (project: ProjectSession): Promise<AppState> => 
       end_time: project.endTime,
       total_active_seconds: project.totalActiveSeconds,
       pauses: project.pauses,
+      variations: project.variations,
       status: project.status,
       notes: project.notes,
       user_id: project.userId
@@ -120,12 +127,15 @@ export const updateProject = async (project: ProjectSession): Promise<AppState> 
       .from('projects')
       .update({
         ns: project.ns,
+        client_name: project.clientName,
+        flooring_type: project.flooringType,
         project_code: project.projectCode,
         type: project.type,
         implement_type: project.implementType,
         end_time: project.endTime,
         total_active_seconds: project.totalActiveSeconds,
         pauses: project.pauses,
+        variations: project.variations,
         status: project.status,
         notes: project.notes
       })

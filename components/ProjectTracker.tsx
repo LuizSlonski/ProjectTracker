@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, Clock, AlertCircle, Timer, Hash, Truck, Maximize2, Briefcase, ChevronRight } from 'lucide-react';
-import { ProjectType, ProjectSession, PauseRecord, ImplementType } from '../types';
-import { PROJECT_TYPES, IMPLEMENT_TYPES } from '../constants';
+import { Play, Pause, Square, Clock, AlertCircle, Timer, Hash, Truck, Maximize2, Briefcase, ChevronRight, Plus, FileCheck, FileX, Trash2, Building, Layers } from 'lucide-react';
+import { ProjectType, ProjectSession, PauseRecord, ImplementType, VariationRecord } from '../types';
+import { PROJECT_TYPES, IMPLEMENT_TYPES, FLOORING_TYPES } from '../constants';
 
 // SUBSTITUA ISSO PELA SUA URL DO WEBHOOK DO TEAMS
-// (Crie um no Teams: Canal -> Conectores -> Incoming Webhook)
 const TEAMS_WEBHOOK_URL = "https://outlook.office.com/webhook/YOUR_WEBHOOK_URL_HERE";
 
 interface ProjectTrackerProps {
@@ -16,75 +16,49 @@ interface ProjectTrackerProps {
 }
 
 export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects, onCreate, onUpdate, isVisible, onNavigateBack }) => {
-  // We determine the "active" project as the one currently being tracked in the UI
   const [activeProject, setActiveProject] = useState<ProjectSession | null>(null);
-  
-  // Timer Display State
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // Form Data (For new project)
+  // Form Data (Start)
   const [ns, setNs] = useState('');
+  const [clientName, setClientName] = useState('');
   const [projectCode, setProjectCode] = useState('');
   const [type, setType] = useState<ProjectType>(ProjectType.RELEASE);
   const [implementType, setImplementType] = useState<ImplementType>(ImplementType.BASE);
+  const [flooringType, setFlooringType] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Variation Form Data
+  const [varOldCode, setVarOldCode] = useState('');
+  const [varNewCode, setVarNewCode] = useState('');
+  const [varDesc, setVarDesc] = useState('');
+  const [varType, setVarType] = useState<'Montagem' | 'Peça'>('Peça');
+  const [varFiles, setVarFiles] = useState(false);
 
   // Pause Logic
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [pauseReason, setPauseReason] = useState('');
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Filter projects that are IN_PROGRESS
   const pendingProjects = existingProjects.filter(p => p.status === 'IN_PROGRESS');
-  
-  // Check if the current active project is effectively paused (has an open pause record)
-  const isPaused = activeProject && 
-                   activeProject.pauses.length > 0 && 
-                   activeProject.pauses[activeProject.pauses.length - 1].durationSeconds === 0 &&
-                   // It's an open pause if the duration is 0 (we use this as a flag for "ongoing pause" temporarily, 
-                   // or better, we check if the timestamp is recent and duration is undefined/0 in a special way. 
-                   // Actually, a robust way: we will store a flag or inferred state).
-                   // Let's rely on the PauseRecord structure. If we are "Paused", we added a record.
-                   // When we resume, we update that record.
-                   // For this logic, let's treat "Paused" as: The project is active in UI, but timer is stopped.
-                   false; // We will use a derived state below.
 
-  // --- TIMER LOGIC USING SYSTEM DATE ---
+  // Helper to check if flooring field should show
+  const shouldShowFlooring = ['Base', 'Furgão', 'Sider'].includes(implementType);
+
   useEffect(() => {
     const updateTimer = () => {
       if (!activeProject) {
         setElapsedSeconds(0);
         return;
       }
-
-      // 1. Calculate Total Time since Start
       const now = Date.now();
       const start = new Date(activeProject.startTime).getTime();
       const diffTotal = Math.floor((now - start) / 1000);
-
-      // 2. Calculate Total Paused Time
-      // If the project is currently PAUSED (meaning the last pause entry is "open"),
-      // we need to handle that. 
-      // Our logic: When we hit "Pause", we save to DB. When we hit "Resume", we calculate duration.
-      // So, if we are in a "Paused" state in the UI, we don't increment the timer.
-      // If we are "Running", we calculate `now - start - total_closed_pauses`.
-
       const totalClosedPauses = activeProject.pauses.reduce((acc, p) => acc + p.durationSeconds, 0);
-      
-      // Determine if currently paused based on our local UI state or if we just loaded it
-      // For simplicity: If the UI knows we are running, show live time.
-      
       setElapsedSeconds(Math.max(0, diffTotal - totalClosedPauses));
     };
 
-    // If we have an active project, we need to know if it's logically "Running" or "Paused"
-    // We can infer this: If the user selected a project, it's generally "Running" 
-    // UNLESS we explicitly put it in a pause state in the UI.
-    
-    // However, to support "Background" tabs, we need to run this interval
     if (activeProject && !showPauseModal) {
-      // Immediate update
       updateTimer();
       timerRef.current = setInterval(updateTimer, 1000);
     } else {
@@ -106,13 +80,16 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
     const newProject: ProjectSession = {
       id: crypto.randomUUID(),
       ns,
+      clientName,
       projectCode,
       type,
       implementType,
+      flooringType: shouldShowFlooring ? flooringType : undefined,
       startTime: new Date().toISOString(),
       totalActiveSeconds: 0,
       pauses: [],
-      status: 'IN_PROGRESS', // Starts in progress immediately
+      variations: [], // Start empty
+      status: 'IN_PROGRESS',
       notes
     };
 
@@ -121,74 +98,39 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
     
     // Reset form fields
     setNs('');
+    setClientName('');
     setProjectCode('');
     setNotes('');
+    setFlooringType('');
   };
 
-  const handleResumeExisting = (project: ProjectSession) => {
-    // When resuming an existing project from the list:
-    // 1. It might have been left "running" (user closed tab).
-    // 2. It might have been "paused" (user clicked pause, then closed tab).
-    
-    // For now, we assume if it's in the list, we are just picking it up.
-    // If the user officially "Paused" it before, there is a pause record.
-    // If the user just closed the browser, there isn't a pause record, so the timer kept "running" (calculating from start date).
-    // This is the desired behavior for "I forgot to close".
-    
-    // However, if the user wants to officially Resume a project that was Paused:
-    // We need to check if the last pause was "closed". 
-    // Our logic below ensures that when we click "Pause", we add a record.
-    // When we click "Resume" (in the modal), we close it.
-    
-    // If we are picking up a project that was left "Paused" (via UI modal interaction previously),
-    // we need to detect that. But currently, `onUpdate` saves the pause. 
-    // Since we don't have an explicit "IS_PAUSED" status in DB (only IN_PROGRESS), 
-    // we rely on the flow: 
-    // - User clicks Pause -> Modal opens -> User types reason -> Click Confirm -> 
-    //   Real logic: We Add a pause record with `timestamp` = NOW. `duration` = 0? 
-    //   NO. We need to know when the pause STARTED.
-    
-    // REVISED PAUSE LOGIC:
-    // 1. Click Pause Button: Store `tempPauseStart = Date.now()`. UI shows Modal.
-    // 2. Click Confirm Pause: `duration = Date.now() - tempPauseStart`. Add record. Save to DB. Project remains IN_PROGRESS.
-    //    Wait, the user said "Pause for more time... return next day".
-    //    This means the "Pause" duration is the time between "Clicking Pause" and "Clicking Resume (Next Day)".
-    
-    // CORRECTED LOGIC FOR PERSISTENT PAUSE:
-    // 1. Click "Pausar" -> Adds a Pause Record: { timestamp: NOW, reason: '...', durationSeconds: 0 (placeholder) }. Save DB.
-    //    UI: Clears `activeProject`. Project goes back to "Pending List".
-    // 2. Click "Retomar" (from list) -> Finds the last pause (duration 0). 
-    //    Calculates `pauseDuration = NOW - pause.timestamp`.
-    //    Updates the pause record. Saves DB.
-    //    Sets `activeProject`.
-    
-    const lastPause = project.pauses.length > 0 ? project.pauses[project.pauses.length - 1] : null;
-    
-    // Check if there is an "Open" pause (heuristic: duration is 0 or undefined, assuming we set it so)
-    // Actually, let's use a specific flag or just assume if we are resuming from the list, checking if we need to close a pause.
-    // But since we didn't implement the "Open Pause" saving yet, let's just set it as active for now.
-    
-    // To support the "Pause for a day" feature:
-    // We need to know if it was paused. 
-    // Let's look at the last pause. If we implement the logic below, we can check.
-    
-    setActiveProject(project);
-    // If the project was "Paused" (saved with an open pause), we would handle it here.
-    // For simplicity in this version, "Resuming" just brings it back to the active Tracker.
-    // If the user had paused it, they would have to hit "Play" in the UI if we kept it loaded.
-    // But the user wants to "Exit" the project and come back.
+  const handleResumeFromList = (project: ProjectSession) => {
+    // Logic to close open pause if needed
+    const lastPauseIndex = project.pauses.length - 1;
+    if (lastPauseIndex >= 0 && project.pauses[lastPauseIndex].durationSeconds === -1) {
+       const pauseStart = new Date(project.pauses[lastPauseIndex].timestamp).getTime();
+       const now = Date.now();
+       const duration = Math.floor((now - pauseStart) / 1000);
+
+       const updatedPauses = [...project.pauses];
+       updatedPauses[lastPauseIndex] = {
+         ...updatedPauses[lastPauseIndex],
+         durationSeconds: duration
+       };
+
+       const updatedProject = { ...project, pauses: updatedPauses };
+       onUpdate(updatedProject);
+       setActiveProject(updatedProject);
+    } else {
+       setActiveProject(project);
+    }
   };
 
-  const handlePauseProject = () => {
-    // User wants to pause the project and potentially do something else
-    setShowPauseModal(true);
-  };
+  const handlePauseProject = () => setShowPauseModal(true);
 
   const confirmPauseAndExit = () => {
     if (!activeProject) return;
 
-    // Create a pause record that marks the START of the pause
-    // We will assume that any pause with durationSeconds = -1 is an "Open" pause
     const newPause: PauseRecord = {
       reason: pauseReason || 'Pausa',
       timestamp: new Date().toISOString(),
@@ -201,44 +143,14 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
     };
 
     onUpdate(updatedProject);
-    setActiveProject(null); // Remove from active view
+    setActiveProject(null);
     setShowPauseModal(false);
     setPauseReason('');
-  };
-
-  const handleResumeFromList = (project: ProjectSession) => {
-    // Check if this project has an open pause (duration = -1)
-    const lastPauseIndex = project.pauses.length - 1;
-    if (lastPauseIndex >= 0 && project.pauses[lastPauseIndex].durationSeconds === -1) {
-       // It was paused! We need to close it.
-       const pauseStart = new Date(project.pauses[lastPauseIndex].timestamp).getTime();
-       const now = Date.now();
-       const duration = Math.floor((now - pauseStart) / 1000);
-
-       const updatedPauses = [...project.pauses];
-       updatedPauses[lastPauseIndex] = {
-         ...updatedPauses[lastPauseIndex],
-         durationSeconds: duration
-       };
-
-       const updatedProject = {
-         ...project,
-         pauses: updatedPauses
-       };
-       
-       onUpdate(updatedProject);
-       setActiveProject(updatedProject);
-    } else {
-       // It wasn't explicitly paused (maybe browser crash or just closed tab without pausing)
-       // So the timer just kept running naturally.
-       setActiveProject(project);
-    }
   };
 
   const handleFinish = async () => {
     if (!activeProject) return;
 
-    // Calculate final seconds one last time
     const now = Date.now();
     const start = new Date(activeProject.startTime).getTime();
     const totalClosedPauses = activeProject.pauses.reduce((acc, p) => acc + (p.durationSeconds > 0 ? p.durationSeconds : 0), 0);
@@ -252,18 +164,58 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
     };
 
     onUpdate(finishedProject);
-    
-    // Send to Teams (Fire and forget)
     sendTeamsNotification(finishedProject);
-
     setActiveProject(null);
+  };
+
+  // --- VARIATION HANDLERS ---
+  const handleAddVariation = () => {
+      if (!activeProject) return;
+      if (!varOldCode.trim() && !varNewCode.trim()) {
+          alert("Insira pelo menos um código (antigo ou novo).");
+          return;
+      }
+
+      const newVar: VariationRecord = {
+          id: crypto.randomUUID(),
+          oldCode: varOldCode,
+          newCode: varNewCode,
+          description: varDesc,
+          type: varType,
+          filesGenerated: varFiles
+      };
+
+      const updatedProject = {
+          ...activeProject,
+          variations: [...activeProject.variations, newVar]
+      };
+
+      // Optimistic update local
+      setActiveProject(updatedProject);
+      // Save to DB
+      onUpdate(updatedProject);
+
+      // Clear small form
+      setVarOldCode('');
+      setVarNewCode('');
+      setVarDesc('');
+      setVarFiles(false);
+  };
+
+  const handleDeleteVariation = (id: string) => {
+      if (!activeProject) return;
+      const updatedProject = {
+          ...activeProject,
+          variations: activeProject.variations.filter(v => v.id !== id)
+      };
+      setActiveProject(updatedProject);
+      onUpdate(updatedProject);
   };
 
   const sendTeamsNotification = async (project: ProjectSession) => {
     if (!TEAMS_WEBHOOK_URL || TEAMS_WEBHOOK_URL.includes("YOUR_WEBHOOK_URL_HERE")) return;
 
     const duration = formatTime(project.totalActiveSeconds);
-    
     const message = {
       "@type": "MessageCard",
       "@context": "http://schema.org/extensions",
@@ -274,8 +226,9 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
         "activitySubtitle": `DesignTrack Pro`,
         "facts": [
           { "name": "NS:", "value": project.ns },
-          { "name": "Código:", "value": project.projectCode || "N/A" },
+          { "name": "Cliente:", "value": project.clientName || "-" },
           { "name": "Tipo:", "value": project.type },
+          { "name": "Variações:", "value": project.variations.length.toString() },
           { "name": "Duração:", "value": duration }
         ],
         "markdown": true
@@ -302,11 +255,10 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
 
   return (
     <>
-      {/* 1. SE NENHUM PROJETO ATIVO: MOSTRAR LISTA DE PENDENTES + FORMULÁRIO DE NOVO */}
       {!activeProject && (
         <div className="space-y-8">
           
-          {/* Active / Pending Projects List */}
+          {/* Pending Projects */}
           {pendingProjects.length > 0 && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -321,19 +273,16 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <div className="font-bold text-gray-800 text-lg">{p.ns}</div>
-                            <div className="text-sm text-gray-500">{p.type} • {p.implementType}</div>
+                            <div className="text-sm text-gray-500">{p.clientName}</div>
+                            <div className="text-xs text-gray-400 mt-1">{p.type} • {p.implementType}</div>
                           </div>
                           <span className={`px-2 py-1 rounded text-xs font-bold ${isPaused ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
                              {isPaused ? 'PAUSADO' : 'ABERTO'}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-400 mb-4 flex items-center">
-                           <Clock className="w-3 h-3 mr-1" />
-                           Iniciado em: {new Date(p.startTime).toLocaleDateString()}
-                        </div>
                         <button 
                           onClick={() => handleResumeFromList(p)}
-                          className="w-full bg-white border border-blue-200 text-blue-600 font-bold py-2 rounded hover:bg-blue-50 transition-colors flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white shadow-sm"
+                          className="w-full bg-white border border-blue-200 text-blue-600 font-bold py-2 rounded hover:bg-blue-50 transition-colors flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white shadow-sm mt-2"
                         >
                           <Play className="w-4 h-4 mr-2" />
                           {isPaused ? 'Retomar Timer' : 'Continuar'}
@@ -362,6 +311,19 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                     className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="Ex: 123456"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                  <div className="relative">
+                    <Building className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+                    <input 
+                      type="text" 
+                      value={clientName}
+                      onChange={e => setClientName(e.target.value)}
+                      className="w-full pl-8 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Nome do Cliente"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cód. Projeto</label>
@@ -399,6 +361,23 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                     </select>
                   </div>
                 </div>
+
+                {shouldShowFlooring && (
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Assoalho</label>
+                    <div className="relative">
+                        <Layers className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+                        <select 
+                        value={flooringType}
+                        onChange={e => setFlooringType(e.target.value)}
+                        className="w-full pl-8 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                            <option value="">Selecione...</option>
+                            {FLOORING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                    </div>
+                )}
               </div>
               <button 
                 onClick={handleStartNew}
@@ -412,50 +391,173 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
         </div>
       )}
 
-      {/* 2. SE PROJETO ATIVO: MOSTRAR CRONÔMETRO E CONTROLES */}
       {activeProject && (
-        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 relative">
-           <div className="flex justify-between items-start mb-6">
-              <h2 className="text-xl font-bold flex items-center text-gray-800">
-                <Clock className="w-6 h-6 mr-2 text-blue-600" />
-                Rastreador Ativo
-              </h2>
-              <div className="text-right">
-                 <div className="font-bold text-lg text-gray-700">{activeProject.ns}</div>
-                 <div className="text-xs text-gray-500">{activeProject.implementType}</div>
-              </div>
-           </div>
+        <div className="space-y-6">
+            {/* Main Tracker Card */}
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 relative">
+                <div className="flex justify-between items-start mb-6">
+                    <h2 className="text-xl font-bold flex items-center text-gray-800">
+                        <Clock className="w-6 h-6 mr-2 text-blue-600" />
+                        Rastreador Ativo
+                    </h2>
+                    <div className="text-right">
+                        <div className="font-bold text-lg text-gray-700">{activeProject.ns}</div>
+                        <div className="text-xs text-gray-500 font-semibold">{activeProject.clientName}</div>
+                        <div className="text-xs text-gray-400">{activeProject.implementType} {activeProject.flooringType ? `• ${activeProject.flooringType}` : ''}</div>
+                    </div>
+                </div>
 
-           <div className="flex flex-col items-center justify-center bg-gray-50 p-8 rounded-xl border border-gray-200 mb-6">
-              <span className="text-sm text-gray-500 font-medium tracking-wider uppercase mb-2 flex items-center animate-pulse">
-                <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
-                Executando
-              </span>
-              <div className="text-7xl font-mono font-bold text-blue-600 tracking-tight">
-                {formatTime(elapsedSeconds)}
-              </div>
-              <div className="mt-4 flex gap-4 text-sm text-gray-500">
-                 <span>Início: {new Date(activeProject.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-              </div>
-           </div>
+                <div className="flex flex-col items-center justify-center bg-gray-50 p-8 rounded-xl border border-gray-200 mb-6">
+                    <span className="text-sm text-gray-500 font-medium tracking-wider uppercase mb-2 flex items-center animate-pulse">
+                        <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                        Executando
+                    </span>
+                    <div className="text-7xl font-mono font-bold text-blue-600 tracking-tight">
+                        {formatTime(elapsedSeconds)}
+                    </div>
+                    <div className="mt-4 flex gap-4 text-sm text-gray-500">
+                        <span>Início: {new Date(activeProject.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                </div>
 
-           <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={handlePauseProject}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg flex items-center justify-center transition-colors shadow-sm"
-              >
-                <Pause className="w-5 h-5 mr-2" />
-                Pausar / Trocar Projeto
-              </button>
+                <div className="grid grid-cols-2 gap-4">
+                    <button 
+                        onClick={handlePauseProject}
+                        className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+                    >
+                        <Pause className="w-5 h-5 mr-2" />
+                        Pausar / Trocar Projeto
+                    </button>
 
-              <button 
-                onClick={handleFinish}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg flex items-center justify-center transition-colors shadow-sm"
-              >
-                <Square className="w-5 h-5 mr-2 fill-current" />
-                Finalizar Projeto
-              </button>
-           </div>
+                    <button 
+                        onClick={handleFinish}
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+                    >
+                        <Square className="w-5 h-5 mr-2 fill-current" />
+                        Finalizar Projeto
+                    </button>
+                </div>
+            </div>
+
+            {/* VARIATION MANAGEMENT SECTION */}
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <Layers className="w-5 h-5 mr-2 text-purple-600" />
+                    Lista de Variações de Projeto
+                 </h3>
+                 
+                 {/* Input Row */}
+                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-4 bg-gray-50 p-3 rounded-lg items-end">
+                     <div className="md:col-span-2">
+                        <label className="text-xs font-semibold text-gray-500">Cód. Antigo</label>
+                        <input 
+                            type="text" 
+                            value={varOldCode}
+                            onChange={e => setVarOldCode(e.target.value)}
+                            className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-purple-500"
+                        />
+                     </div>
+                     <div className="md:col-span-4">
+                        <label className="text-xs font-semibold text-gray-500">Descrição / Nome</label>
+                        <input 
+                            type="text" 
+                            value={varDesc}
+                            onChange={e => setVarDesc(e.target.value)}
+                            className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-purple-500"
+                        />
+                     </div>
+                     <div className="md:col-span-2">
+                        <label className="text-xs font-semibold text-gray-500">Cód. Novo</label>
+                        <input 
+                            type="text" 
+                            value={varNewCode}
+                            onChange={e => setVarNewCode(e.target.value)}
+                            className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-purple-500"
+                        />
+                     </div>
+                     <div className="md:col-span-2">
+                        <label className="text-xs font-semibold text-gray-500">Tipo</label>
+                        <select 
+                            value={varType}
+                            onChange={e => setVarType(e.target.value as any)}
+                            className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-purple-500"
+                        >
+                            <option value="Peça">Peça</option>
+                            <option value="Montagem">Montagem</option>
+                        </select>
+                     </div>
+                     <div className="md:col-span-1 flex items-center justify-center pb-2">
+                         <label className="flex items-center cursor-pointer" title="DXF/PDF Gerados?">
+                             <input 
+                                type="checkbox" 
+                                checked={varFiles}
+                                onChange={e => setVarFiles(e.target.checked)}
+                                className="w-4 h-4 text-purple-600 rounded mr-1"
+                             />
+                             <span className="text-xs font-bold text-gray-600">Files</span>
+                         </label>
+                     </div>
+                     <div className="md:col-span-1">
+                         <button 
+                            onClick={handleAddVariation}
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white p-2 rounded flex items-center justify-center"
+                         >
+                             <Plus className="w-5 h-5" />
+                         </button>
+                     </div>
+                 </div>
+
+                 {/* Table */}
+                 <div className="overflow-x-auto">
+                     <table className="w-full text-sm text-left">
+                         <thead className="bg-gray-100 text-gray-600 font-semibold">
+                             <tr>
+                                 <th className="p-3 rounded-tl-lg">Código Antigo</th>
+                                 <th className="p-3">Descrição</th>
+                                 <th className="p-3">Código Novo</th>
+                                 <th className="p-3">Tipo</th>
+                                 <th className="p-3 text-center">DXF/PDF</th>
+                                 <th className="p-3 rounded-tr-lg"></th>
+                             </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-100">
+                             {activeProject.variations.map((v) => (
+                                 <tr key={v.id} className="hover:bg-gray-50">
+                                     <td className="p-3 font-mono text-gray-600">{v.oldCode || '-'}</td>
+                                     <td className="p-3 text-gray-800 font-medium">{v.description}</td>
+                                     <td className="p-3 font-mono text-blue-600 font-bold">{v.newCode || '-'}</td>
+                                     <td className="p-3">
+                                         <span className={`px-2 py-0.5 rounded text-xs ${v.type === 'Montagem' ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-700'}`}>
+                                             {v.type}
+                                         </span>
+                                     </td>
+                                     <td className="p-3 text-center">
+                                         {v.filesGenerated 
+                                            ? <FileCheck className="w-5 h-5 text-green-500 mx-auto" /> 
+                                            : <FileX className="w-5 h-5 text-gray-300 mx-auto" />
+                                         }
+                                     </td>
+                                     <td className="p-3 text-right">
+                                         <button 
+                                            onClick={() => handleDeleteVariation(v.id)}
+                                            className="text-gray-400 hover:text-red-500"
+                                         >
+                                             <Trash2 className="w-4 h-4" />
+                                         </button>
+                                     </td>
+                                 </tr>
+                             ))}
+                             {activeProject.variations.length === 0 && (
+                                 <tr>
+                                     <td colSpan={6} className="p-6 text-center text-gray-400 italic">
+                                         Nenhuma variação registrada para este projeto ainda.
+                                     </td>
+                                 </tr>
+                             )}
+                         </tbody>
+                     </table>
+                 </div>
+            </div>
         </div>
       )}
 
@@ -467,21 +569,18 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
               <Pause className="w-5 h-5 mr-2" />
               Pausar Projeto
             </h3>
-            
             <p className="text-gray-600 text-sm mb-4">
-              Isso irá parar o cronômetro e salvar o projeto na lista de "Em Andamento". Você poderá retomá-lo a qualquer momento (hoje ou outro dia).
+              Isso irá parar o cronômetro. O projeto ficará salvo na lista para retorno posterior.
             </p>
-
             <label className="block text-sm font-medium text-gray-700 mb-1">Motivo da Pausa</label>
             <input 
               type="text" 
               autoFocus
               value={pauseReason}
               onChange={e => setPauseReason(e.target.value)}
-              placeholder="Ex: Almoço, Reunião, Fim do expediente..."
+              placeholder="Ex: Almoço..."
               className="w-full p-3 border rounded-lg mb-6 focus:ring-2 focus:ring-yellow-500 outline-none"
             />
-            
             <div className="flex justify-end gap-2">
               <button 
                 onClick={() => setShowPauseModal(false)}
@@ -500,7 +599,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
         </div>
       )}
 
-      {/* Floating Timer Pop-up (Visible only when tracker is hidden and running) */}
+      {/* Floating Timer Pop-up */}
       {!isVisible && activeProject && (
         <div 
           onClick={onNavigateBack}

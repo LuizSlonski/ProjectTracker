@@ -51,16 +51,28 @@ export interface PauseRecord {
   durationSeconds: number; // Approximate duration of this pause
 }
 
+export interface VariationRecord {
+  id: string;
+  oldCode: string;
+  description: string;
+  newCode: string;
+  type: 'Montagem' | 'Peça';
+  filesGenerated: boolean; // DXF/PDF check
+}
+
 export interface ProjectSession {
   id: string;
   ns: string;
-  projectCode?: string; // New field
+  clientName?: string; // New
+  flooringType?: string; // New
+  projectCode?: string;
   type: ProjectType;
-  implementType?: ImplementType; // New field
+  implementType?: ImplementType;
   startTime: string; // ISO
   endTime?: string; // ISO
   totalActiveSeconds: number;
   pauses: PauseRecord[];
+  variations: VariationRecord[]; // New
   status: 'COMPLETED' | 'IN_PROGRESS';
   notes?: string;
   userId?: string; // Track who did this project
