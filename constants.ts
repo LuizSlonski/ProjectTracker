@@ -31,11 +31,23 @@ export const FLOORING_TYPES = [
 ];
 
 export const ISSUE_TYPES = [
-  IssueType.DESIGN_ERROR,
-  IssueType.BENDING_ERROR,
-  IssueType.CUTTING_ERROR,
-  IssueType.MATERIAL_ERROR,
-  IssueType.ASSEMBLY_ERROR
+  IssueType.COMERCIAL,
+  IssueType.CORTE_DOBRA,
+  IssueType.ENGENHARIA,
+  IssueType.PCP_COMPONENTES,
+  IssueType.PCP_PECAS,
+  IssueType.MONTAGEM_CHASSI,
+  IssueType.MONTAGEM_CAIXA_CARGA,
+  IssueType.MONTAGEM_TETO,
+  IssueType.MONTAGEM_ACESSORIOS,
+  IssueType.MECANICA_SOBRE_CHASSI,
+  IssueType.MECANICA_SR,
+  IssueType.CHAPEACAO,
+  IssueType.PORTAS,
+  IssueType.PINTURA,
+  IssueType.ELETRICA_ABS_EBS,
+  IssueType.ALINHAMENTO_EIXOS,
+  IssueType.QUALIDADE_INSPECAO_FINAL
 ];
 
 export const STORAGE_KEY = 'design_track_pro_data';

@@ -16,11 +16,23 @@ export enum ImplementType {
 }
 
 export enum IssueType {
-  DESIGN_ERROR = 'Erro de Projeto',
-  BENDING_ERROR = 'Erro de Dobra',
-  CUTTING_ERROR = 'Erro de Corte',
-  MATERIAL_ERROR = 'Erro de Material',
-  ASSEMBLY_ERROR = 'Erro de Montagem'
+  COMERCIAL = 'Comercial',
+  CORTE_DOBRA = 'Corte /Dobra',
+  ENGENHARIA = 'Engenharia',
+  PCP_COMPONENTES = 'PCP Componentes',
+  PCP_PECAS = 'PCP Peças',
+  MONTAGEM_CHASSI = 'Montagem de chassi',
+  MONTAGEM_CAIXA_CARGA = 'Montagem Caixa de Carga',
+  MONTAGEM_TETO = 'Montagem Teto',
+  MONTAGEM_ACESSORIOS = 'Montagem acessórios',
+  MECANICA_SOBRE_CHASSI = 'Mecânica Sobre Chassi',
+  MECANICA_SR = 'Mecânica SR',
+  CHAPEACAO = 'Chapeação',
+  PORTAS = 'Portas',
+  PINTURA = 'Pintura',
+  ELETRICA_ABS_EBS = 'Elétrica /ABS-EBS',
+  ALINHAMENTO_EIXOS = 'Alinhamento de Eixos',
+  QUALIDADE_INSPECAO_FINAL = 'Qualidade Inspeção Final'
 }
 
 export enum InnovationType {

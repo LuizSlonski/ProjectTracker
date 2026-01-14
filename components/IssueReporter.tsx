@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { IssueType, IssueRecord } from '../types';
@@ -9,7 +10,8 @@ interface IssueReporterProps {
 
 export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
   const [ns, setNs] = useState('');
-  const [type, setType] = useState<IssueType>(IssueType.ASSEMBLY_ERROR);
+  // Set default to Engenharia or the first item in the list
+  const [type, setType] = useState<IssueType>(IssueType.ENGENHARIA);
   const [description, setDescription] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -49,11 +51,11 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Erro</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Setor / Origem da Falha</label>
           <select 
             value={type}
             onChange={e => setType(e.target.value as IssueType)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
           >
             {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
