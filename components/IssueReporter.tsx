@@ -18,13 +18,14 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
   const [timeSpent, setTimeSpent] = useState<number>(0);
   const [hourlyRate, setHourlyRate] = useState<number>(0);
   const [materialCost, setMaterialCost] = useState<number>(0);
+  const [peopleInvolved, setPeopleInvolved] = useState<number>(1);
 
   // Photo state
   const [photos, setPhotos] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   const calculateTotal = () => {
-    const laborCost = (timeSpent / 60) * hourlyRate;
+    const laborCost = (timeSpent / 60) * hourlyRate * peopleInvolved;
     return laborCost + materialCost;
   };
 
@@ -67,6 +68,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
       timeSpent,
       hourlyRate,
       materialCost,
+      peopleInvolved,
       totalCost: calculateTotal(),
       photos
     };
@@ -77,6 +79,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
     setTimeSpent(0);
     setHourlyRate(0);
     setMaterialCost(0);
+    setPeopleInvolved(1);
     setPhotos([]);
   };
 
@@ -158,7 +161,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
         {/* Cost Calculation Section */}
         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Custo do Retrabalho</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Tempo Gasto (minutos)</label>
                     <input 
@@ -168,6 +171,17 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
                         onChange={e => setTimeSpent(Number(e.target.value))}
                         className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                         placeholder="0"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Pessoas Envolvidas</label>
+                    <input 
+                        type="number" 
+                        min="1"
+                        value={peopleInvolved}
+                        onChange={e => setPeopleInvolved(Number(e.target.value))}
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                        placeholder="1"
                     />
                 </div>
                 <div>
