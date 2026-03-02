@@ -105,6 +105,7 @@ export interface IssueRecord {
   totalCost?: number; // Calculated total cost
   
   photos?: string[]; // Array of base64 strings
+  peopleInvolved?: number; // Number of people involved in the rework
 }
 
 export interface InnovationRecord {

@@ -70,7 +70,8 @@ export const fetchAppState = async (): Promise<AppState> => {
       hourlyRate: Number(i.hourly_rate) || 0,
       materialCost: Number(i.material_cost) || 0,
       totalCost: Number(i.total_cost) || 0,
-      photos: i.photos || []
+      photos: i.photos || [],
+      peopleInvolved: Number(i.people_involved) || 1
     }));
 
     const innovations: InnovationRecord[] = (innovationsData || []).map((inv: any) => ({
@@ -178,13 +179,41 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
       hourly_rate: issue.hourlyRate,
       material_cost: issue.materialCost,
       total_cost: issue.totalCost,
-      photos: issue.photos
+      photos: issue.photos,
+      people_involved: issue.peopleInvolved
     }]);
 
     if (error) throw error;
     return fetchAppState();
   } catch (error) {
     console.error("Failed to add issue", error);
+    throw error;
+  }
+};
+
+export const updateIssue = async (issue: IssueRecord): Promise<AppState> => {
+  try {
+    const { error } = await supabase
+      .from('issues')
+      .update({
+        project_ns: issue.projectNs,
+        type: issue.type,
+        description: issue.description,
+        date: issue.date,
+        reported_by: issue.reportedBy,
+        time_spent: issue.timeSpent,
+        hourly_rate: issue.hourlyRate,
+        material_cost: issue.materialCost,
+        total_cost: issue.totalCost,
+        photos: issue.photos,
+        people_involved: issue.peopleInvolved
+      })
+      .eq('id', issue.id);
+
+    if (error) throw error;
+    return fetchAppState();
+  } catch (error) {
+    console.error("Failed to update issue", error);
     throw error;
   }
 };

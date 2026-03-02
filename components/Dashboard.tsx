@@ -112,19 +112,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     return filteredIssues.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
   }, [filteredIssues]);
 
-  // 1.7 Calculate Cost by Issue Type
-  const costByTypeData = useMemo(() => {
-    const costs = filteredIssues.reduce((acc, curr) => {
-        const typeKey = String(curr.type);
-        acc[typeKey] = (acc[typeKey] || 0) + (curr.totalCost || 0);
-        return acc;
-    }, {} as Record<string, number>);
+  // Individual Chart Filters
+  const [costChartDate, setCostChartDate] = useState({ start: '', end: '' });
+  const [issuePieDate, setIssuePieDate] = useState({ start: '', end: '' });
+  const [releaseChartDate, setReleaseChartDate] = useState({ start: '', end: '' });
+  const [innovationChartDate, setInnovationChartDate] = useState({ start: '', end: '' });
+  const [implementPieDate, setImplementPieDate] = useState({ start: '', end: '' });
+  const [designerChartDate, setDesignerChartDate] = useState({ start: '', end: '' });
 
-    return Object.entries(costs)
-        .map(([name, value]) => ({ name, value: Number(value) }))
-        .sort((a, b) => a.value - b.value ? b.value - a.value : 0) // Robust sort
-        .slice(0, 5); // Top 5
-  }, [filteredIssues]);
+  // Helper to filter data by date range
+  const filterByDate = (
+    items: any[], 
+    startStr: string, 
+    endStr: string,
+    dateField: string
+  ) => {
+    if (!startStr && !endStr) return items;
+    const start = startStr ? new Date(startStr).getTime() : 0;
+    const end = endStr ? new Date(endStr).setHours(23, 59, 59, 999) : Infinity;
+    
+    return items.filter(item => {
+      const val = item[dateField];
+      if (!val) return false;
+      const d = new Date(String(val)).getTime();
+      return d >= start && d <= end;
+    });
+  };
 
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -136,9 +149,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
   };
 
-  // 2. Bar Chart Data: Releases per Month
+  // 1.7 Calculate Cost by Issue Type (Filtered)
+  const costByTypeData = useMemo(() => {
+    const filtered = filterByDate(data.issues, costChartDate.start, costChartDate.end, 'date');
+    const costs = filtered.reduce((acc, curr) => {
+        const typeKey = String(curr.type);
+        acc[typeKey] = (acc[typeKey] || 0) + (curr.totalCost || 0);
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(costs)
+        .map(([name, value]) => ({ name, value: Number(value) }))
+        .sort((a, b) => a.value - b.value ? b.value - a.value : 0)
+        .slice(0, 5);
+  }, [data.issues, costChartDate]);
+
+  // 2. Bar Chart Data: Releases per Month (Filtered)
   const barData = useMemo(() => {
-    const releasesByMonth = filteredProjects
+    const filtered = filterByDate(data.projects.filter(p => p.status === 'COMPLETED'), releaseChartDate.start, releaseChartDate.end, 'endTime');
+    const releasesByMonth = filtered
       .reduce((acc, curr) => {
         const date = new Date(curr.endTime!);
         const monthYear = date.toLocaleString('pt-BR', { month: 'short' });
@@ -151,11 +180,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       name: key,
       liberacoes: releasesByMonth[key]
     }));
-  }, [filteredProjects]);
+  }, [data.projects, releaseChartDate]);
 
-  // 3. Pie Chart Data: Issue Type Distribution
+  // 3. Pie Chart Data: Issue Type Distribution (Filtered)
   const pieData = useMemo(() => {
-    const issuesByType = filteredIssues.reduce((acc, curr) => {
+    const filtered = filterByDate(data.issues, issuePieDate.start, issuePieDate.end, 'date');
+    const issuesByType = filtered.reduce((acc, curr) => {
       acc[curr.type] = (acc[curr.type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -164,11 +194,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       name: type,
       value: issuesByType[type]
     }));
-  }, [filteredIssues]);
+  }, [data.issues, issuePieDate]);
 
-  // 4. Pie Chart: Implement Type Distribution
+  // 4. Pie Chart: Implement Type Distribution (Filtered)
   const implementData = useMemo(() => {
-    const counts = filteredProjects.reduce((acc, curr) => {
+    const filtered = filterByDate(data.projects.filter(p => p.status === 'COMPLETED'), implementPieDate.start, implementPieDate.end, 'endTime');
+    const counts = filtered.reduce((acc, curr) => {
       const type = curr.implementType || 'Não Informado';
       acc[type] = (acc[type] || 0) + 1;
       return acc;
@@ -178,13 +209,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       name: key,
       value: counts[key]
     }));
-  }, [filteredProjects]);
+  }, [data.projects, implementPieDate]);
 
-  // 5. Bar Chart: Releases by Designer (Manager Only)
+  // 5. Bar Chart: Releases by Designer (Filtered)
   const designerData = useMemo(() => {
     if (currentUser.role !== 'GESTOR') return [];
+    const filtered = filterByDate(data.projects.filter(p => p.status === 'COMPLETED'), designerChartDate.start, designerChartDate.end, 'endTime');
 
-    const counts = filteredProjects.reduce((acc, curr) => {
+    const counts = filtered.reduce((acc, curr) => {
       const name = usersMap[curr.userId || ''] || 'Desconhecido';
       acc[name] = (acc[name] || 0) + 1;
       return acc;
@@ -194,10 +226,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       name: key,
       liberacoes: counts[key]
     }));
-  }, [filteredProjects, currentUser.role, usersMap]);
+  }, [data.projects, currentUser.role, usersMap, designerChartDate]);
 
-  // 6. Stacked Bar Chart: Innovations by Status and Type
+  // 6. Stacked Bar Chart: Innovations (Filtered)
   const innovationChartData = useMemo(() => {
+    const filtered = filterByDate(data.innovations, innovationChartDate.start, innovationChartDate.end, 'createdAt');
     const statuses = ['PENDING', 'APPROVED', 'IMPLEMENTED', 'REJECTED'];
     const labelMap: Record<string, string> = {
         'PENDING': 'Pendente',
@@ -207,7 +240,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     };
 
     return statuses.map(status => {
-        const items = filteredInnovations.filter(i => i.status === status);
+        const items = filtered.filter(i => i.status === status);
         const newProjects = items.filter(i => i.type === InnovationType.NEW_PROJECT).length;
         const improvements = items.filter(i => i.type === InnovationType.PRODUCT_IMPROVEMENT).length;
         const optimizations = items.filter(i => i.type === InnovationType.PROCESS_OPTIMIZATION).length;
@@ -219,7 +252,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             "Otimização": optimizations
         };
     });
-  }, [filteredInnovations]);
+  }, [data.innovations, innovationChartDate]);
+
+  // Date Filter Component
+  const DateFilter = ({ value, onChange }: { value: { start: string, end: string }, onChange: (v: { start: string, end: string }) => void }) => (
+    <div className="flex gap-2 mb-4 justify-end">
+        <input 
+            type="date" 
+            className="text-xs border rounded p-1" 
+            value={value.start} 
+            onChange={e => onChange({ ...value, start: e.target.value })} 
+        />
+        <span className="text-gray-400">-</span>
+        <input 
+            type="date" 
+            className="text-xs border rounded p-1" 
+            value={value.end} 
+            onChange={e => onChange({ ...value, end: e.target.value })} 
+        />
+    </div>
+  );
 
 
   const handleAiAnalysis = async () => {
@@ -365,10 +417,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         
         {/* Cost by Issue Type (Bar Chart) - NEW */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-                <TrendingDown className="w-5 h-5 mr-2 text-red-500" />
-                Custo por Tipo de Erro (Top 5)
-            </h3>
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-700 flex items-center">
+                    <TrendingDown className="w-5 h-5 mr-2 text-red-500" />
+                    Custo por Tipo de Erro (Top 5)
+                </h3>
+            </div>
+            <DateFilter value={costChartDate} onChange={setCostChartDate} />
             <div className="h-[250px] w-full">
                 {costByTypeData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -390,10 +445,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
         {/* Issue Distribution (Pie Chart) - VISIBLE TO EVERYONE */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px] col-span-1 md:col-span-2 lg:col-span-1">
-          <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-            <PieIcon className="w-5 h-5 mr-2 text-red-500" />
-            Distribuição de Problemas
-          </h3>
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-lg font-bold text-gray-700 flex items-center">
+                <PieIcon className="w-5 h-5 mr-2 text-red-500" />
+                Distribuição de Problemas
+            </h3>
+          </div>
+          <DateFilter value={issuePieDate} onChange={setIssuePieDate} />
           <div className="h-[250px] w-full">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -431,10 +489,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         {/* Releases per Month (Bar Chart) - HIDDEN FOR QUALITY & PROCESSES */}
         {!isRestrictedRole && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-                <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
-                Liberações por Mês
-            </h3>
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-700 flex items-center">
+                    <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
+                    Liberações por Mês
+                </h3>
+            </div>
+            <DateFilter value={releaseChartDate} onChange={setReleaseChartDate} />
             <div className="h-[250px] w-full">
                 {barData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -458,10 +519,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         {/* Innovations Chart - HIDDEN FOR QUALITY */}
         {currentUser.role !== 'QUALIDADE' && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-                <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
-                Status de Inovações
-            </h3>
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-700 flex items-center">
+                    <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
+                    Status de Inovações
+                </h3>
+            </div>
+            <DateFilter value={innovationChartDate} onChange={setInnovationChartDate} />
             <div className="h-[250px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={innovationChartData}>
@@ -482,10 +546,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         {/* Implement Type (Pie Chart) - HIDDEN FOR QUALITY & PROCESSES */}
         {!isRestrictedRole && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-                <Truck className="w-5 h-5 mr-2 text-orange-500" />
-                Distribuição por Implemento
-            </h3>
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-700 flex items-center">
+                    <Truck className="w-5 h-5 mr-2 text-orange-500" />
+                    Distribuição por Implemento
+                </h3>
+            </div>
+            <DateFilter value={implementPieDate} onChange={setImplementPieDate} />
             <div className="h-[250px] w-full">
                 {implementData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -524,10 +591,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         {/* Manager Only: Releases by Designer */}
         {currentUser.role === 'GESTOR' && (
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
-              <UserIcon className="w-5 h-5 mr-2 text-purple-600" />
-              Liberações por Projetista
-            </h3>
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-700 flex items-center">
+                <UserIcon className="w-5 h-5 mr-2 text-purple-600" />
+                Liberações por Projetista
+                </h3>
+            </div>
+            <DateFilter value={designerChartDate} onChange={setDesignerChartDate} />
              <div className="h-[250px] w-full">
               {designerData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
