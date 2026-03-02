@@ -15,6 +15,8 @@ interface IssueHistoryProps {
 export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, onDelete, onUpdate }) => {
   const [filterNs, setFilterNs] = useState('');
   const [filterType, setFilterType] = useState<string>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
@@ -36,9 +38,18 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     return data.issues.filter(issue => {
       const matchNs = issue.projectNs.toLowerCase().includes(filterNs.toLowerCase());
       const matchType = filterType ? issue.type === filterType : true;
-      return matchNs && matchType;
+      
+      let matchDate = true;
+      if (startDate || endDate) {
+        const iDate = new Date(issue.date).getTime();
+        const start = startDate ? new Date(startDate).getTime() : 0;
+        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Infinity;
+        matchDate = iDate >= start && iDate <= end;
+      }
+
+      return matchNs && matchType && matchDate;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [data.issues, filterNs, filterType]);
+  }, [data.issues, filterNs, filterType, startDate, endDate]);
 
   const formatDate = (isoString: string) => {
     return new Date(isoString).toLocaleString('pt-BR', {
@@ -139,25 +150,52 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar erro por NS..."
-            value={filterNs}
-            onChange={(e) => setFilterNs(e.target.value)}
-            className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
-          />
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar erro por NS..."
+              value={filterNs}
+              onChange={(e) => setFilterNs(e.target.value)}
+              className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+            />
+          </div>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+          >
+            <option value="">Todos os Tipos de Erro</option>
+            {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
-        >
-          <option value="">Todos os Tipos de Erro</option>
-          {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+        
+        <div className="flex items-center gap-4 justify-end border-t pt-4">
+            <span className="text-sm font-medium text-gray-600 flex items-center">
+                <Calendar className="w-4 h-4 mr-2" />
+                Filtrar por Data:
+            </span>
+            <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">De:</span>
+                <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
+                />
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Até:</span>
+                <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
+                />
+            </div>
+        </div>
       </div>
 
       {/* List */}

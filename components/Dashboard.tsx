@@ -115,10 +115,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   // Individual Chart Filters
   const [costChartDate, setCostChartDate] = useState({ start: '', end: '' });
   const [issuePieDate, setIssuePieDate] = useState({ start: '', end: '' });
-  const [releaseChartDate, setReleaseChartDate] = useState({ start: '', end: '' });
-  const [innovationChartDate, setInnovationChartDate] = useState({ start: '', end: '' });
-  const [implementPieDate, setImplementPieDate] = useState({ start: '', end: '' });
-  const [designerChartDate, setDesignerChartDate] = useState({ start: '', end: '' });
 
   // Helper to filter data by date range
   const filterByDate = (
@@ -164,24 +160,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         .slice(0, 5);
   }, [data.issues, costChartDate]);
 
-  // 2. Bar Chart Data: Releases per Month (Filtered)
-  const barData = useMemo(() => {
-    const filtered = filterByDate(data.projects.filter(p => p.status === 'COMPLETED'), releaseChartDate.start, releaseChartDate.end, 'endTime');
-    const releasesByMonth = filtered
-      .reduce((acc, curr) => {
-        const date = new Date(curr.endTime!);
-        const monthYear = date.toLocaleString('pt-BR', { month: 'short' });
-        const key = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-    return Object.keys(releasesByMonth).map(key => ({
-      name: key,
-      liberacoes: releasesByMonth[key]
-    }));
-  }, [data.projects, releaseChartDate]);
-
   // 3. Pie Chart Data: Issue Type Distribution (Filtered)
   const pieData = useMemo(() => {
     const filtered = filterByDate(data.issues, issuePieDate.start, issuePieDate.end, 'date');
@@ -195,64 +173,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       value: issuesByType[type]
     }));
   }, [data.issues, issuePieDate]);
-
-  // 4. Pie Chart: Implement Type Distribution (Filtered)
-  const implementData = useMemo(() => {
-    const filtered = filterByDate(data.projects.filter(p => p.status === 'COMPLETED'), implementPieDate.start, implementPieDate.end, 'endTime');
-    const counts = filtered.reduce((acc, curr) => {
-      const type = curr.implementType || 'Não Informado';
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.keys(counts).map(key => ({
-      name: key,
-      value: counts[key]
-    }));
-  }, [data.projects, implementPieDate]);
-
-  // 5. Bar Chart: Releases by Designer (Filtered)
-  const designerData = useMemo(() => {
-    if (currentUser.role !== 'GESTOR') return [];
-    const filtered = filterByDate(data.projects.filter(p => p.status === 'COMPLETED'), designerChartDate.start, designerChartDate.end, 'endTime');
-
-    const counts = filtered.reduce((acc, curr) => {
-      const name = usersMap[curr.userId || ''] || 'Desconhecido';
-      acc[name] = (acc[name] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.keys(counts).map(key => ({
-      name: key,
-      liberacoes: counts[key]
-    }));
-  }, [data.projects, currentUser.role, usersMap, designerChartDate]);
-
-  // 6. Stacked Bar Chart: Innovations (Filtered)
-  const innovationChartData = useMemo(() => {
-    const filtered = filterByDate(data.innovations, innovationChartDate.start, innovationChartDate.end, 'createdAt');
-    const statuses = ['PENDING', 'APPROVED', 'IMPLEMENTED', 'REJECTED'];
-    const labelMap: Record<string, string> = {
-        'PENDING': 'Pendente',
-        'APPROVED': 'Aprovado',
-        'IMPLEMENTED': 'Implementado',
-        'REJECTED': 'Rejeitado'
-    };
-
-    return statuses.map(status => {
-        const items = filtered.filter(i => i.status === status);
-        const newProjects = items.filter(i => i.type === InnovationType.NEW_PROJECT).length;
-        const improvements = items.filter(i => i.type === InnovationType.PRODUCT_IMPROVEMENT).length;
-        const optimizations = items.filter(i => i.type === InnovationType.PROCESS_OPTIMIZATION).length;
-        
-        return {
-            name: labelMap[status],
-            "Novo Projeto": newProjects,
-            "Melhoria": improvements,
-            "Otimização": optimizations
-        };
-    });
-  }, [data.innovations, innovationChartDate]);
 
   // Date Filter Component
   const DateFilter = ({ value, onChange }: { value: { start: string, end: string }, onChange: (v: { start: string, end: string }) => void }) => (
@@ -360,16 +280,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               </div>
             </div>
           ))}
-          {/* Innovation KPI */}
-           <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Economia Aprovada</p>
-                <p className="text-xl font-bold text-emerald-800">{formatCurrency(totalSavings)}</p>
-              </div>
-              <div className="h-8 w-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600">
-                <TrendingDown className="w-4 h-4" />
-              </div>
-            </div>
             
             {/* Rework Cost KPI */}
             <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm flex items-center justify-between">
@@ -381,35 +291,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
-        </div>
-      )}
-
-      {/* AI Insights Section */}
-      {!isRestrictedRole && (
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-indigo-900 flex items-center">
-              <Sparkles className="w-5 h-5 mr-2 text-indigo-600" />
-              Análise Inteligente (IA)
-            </h3>
-            <button 
-              onClick={handleAiAnalysis}
-              disabled={isLoadingAi}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
-            >
-              {isLoadingAi ? 'Analisando...' : 'Gerar Relatório'}
-            </button>
-          </div>
-          
-          {aiAnalysis ? (
-            <div className="prose prose-sm max-w-none text-indigo-900 bg-white/50 p-4 rounded-lg">
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{aiAnalysis}</pre>
-            </div>
-          ) : (
-            <p className="text-indigo-600/70 text-sm">
-              Clique em "Gerar Relatório" para que a IA analise o desempenho do período selecionado.
-            </p>
-          )}
         </div>
       )}
 
@@ -485,138 +366,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             )}
           </div>
         </div>
-
-        {/* Releases per Month (Bar Chart) - HIDDEN FOR QUALITY & PROCESSES */}
-        {!isRestrictedRole && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-gray-700 flex items-center">
-                    <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
-                    Liberações por Mês
-                </h3>
-            </div>
-            <DateFilter value={releaseChartDate} onChange={setReleaseChartDate} />
-            <div className="h-[250px] w-full">
-                {barData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={barData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{ fill: '#f3f4f6' }} />
-                    <Bar dataKey="liberacoes" name="Liberações" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
-                    </BarChart>
-                </ResponsiveContainer>
-                ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                    Sem dados para exibir.
-                </div>
-                )}
-            </div>
-            </div>
-        )}
-
-        {/* Innovations Chart - HIDDEN FOR QUALITY */}
-        {currentUser.role !== 'QUALIDADE' && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-gray-700 flex items-center">
-                    <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
-                    Status de Inovações
-                </h3>
-            </div>
-            <DateFilter value={innovationChartDate} onChange={setInnovationChartDate} />
-            <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={innovationChartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" tickLine={false} axisLine={false} style={{fontSize: '12px'}} />
-                        <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                        <Tooltip cursor={{ fill: '#f3f4f6' }} />
-                        <Legend />
-                        <Bar dataKey="Novo Projeto" stackId="a" fill="#8b5cf6" />
-                        <Bar dataKey="Melhoria" stackId="a" fill="#3b82f6" />
-                        <Bar dataKey="Otimização" stackId="a" fill="#f97316" />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-            </div>
-        )}
-
-        {/* Implement Type (Pie Chart) - HIDDEN FOR QUALITY & PROCESSES */}
-        {!isRestrictedRole && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-gray-700 flex items-center">
-                    <Truck className="w-5 h-5 mr-2 text-orange-500" />
-                    Distribuição por Implemento
-                </h3>
-            </div>
-            <DateFilter value={implementPieDate} onChange={setImplementPieDate} />
-            <div className="h-[250px] w-full">
-                {implementData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                    <Pie
-                        data={implementData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                    >
-                        {implementData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend 
-                        layout="vertical" 
-                        verticalAlign="middle" 
-                        align="right"
-                        wrapperStyle={{ fontSize: '12px' }}
-                    />
-                    </PieChart>
-                </ResponsiveContainer>
-                ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                    Sem dados para exibir.
-                </div>
-                )}
-            </div>
-            </div>
-        )}
-
-        {/* Manager Only: Releases by Designer */}
-        {currentUser.role === 'GESTOR' && (
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
-            <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-gray-700 flex items-center">
-                <UserIcon className="w-5 h-5 mr-2 text-purple-600" />
-                Liberações por Projetista
-                </h3>
-            </div>
-            <DateFilter value={designerChartDate} onChange={setDesignerChartDate} />
-             <div className="h-[250px] w-full">
-              {designerData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={designerData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                    <YAxis dataKey="name" type="category" width={100} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{ fill: '#f3f4f6' }} />
-                    <Bar dataKey="liberacoes" name="Projetos" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                  Sem dados para exibir.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
