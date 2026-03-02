@@ -103,6 +103,8 @@ export interface IssueRecord {
   hourlyRate?: number; // Cost per hour
   materialCost?: number; // Direct material cost
   totalCost?: number; // Calculated total cost
+  
+  photos?: string[]; // Array of base64 strings
 }
 
 export interface InnovationRecord {

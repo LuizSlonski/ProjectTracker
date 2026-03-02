@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { IssueType, IssueRecord } from '../types';
 import { ISSUE_TYPES } from '../constants';
 
@@ -19,9 +19,39 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
   const [hourlyRate, setHourlyRate] = useState<number>(0);
   const [materialCost, setMaterialCost] = useState<number>(0);
 
+  // Photo state
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
   const calculateTotal = () => {
     const laborCost = (timeSpent / 60) * hourlyRate;
     return laborCost + materialCost;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setIsUploading(true);
+      const files = Array.from(e.target.files);
+      
+      const readers = files.map((file: any) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(readers).then(results => {
+        setPhotos(prev => [...prev, ...results]);
+        setIsUploading(false);
+      });
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,7 +67,8 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
       timeSpent,
       hourlyRate,
       materialCost,
-      totalCost: calculateTotal()
+      totalCost: calculateTotal(),
+      photos
     };
 
     onReport(newIssue);
@@ -46,6 +77,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
     setTimeSpent(0);
     setHourlyRate(0);
     setMaterialCost(0);
+    setPhotos([]);
   };
 
   return (
@@ -90,6 +122,37 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             placeholder="Descreva o que aconteceu..."
             required
           />
+        </div>
+
+        {/* Image Upload Section */}
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Evidências (Fotos)</label>
+            <div className="flex flex-wrap gap-4 mb-2">
+                {photos.map((photo, index) => (
+                    <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group">
+                        <img src={photo} alt="Evidência" className="w-full h-full object-cover" />
+                        <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <X className="w-3 h-3" />
+                        </button>
+                    </div>
+                ))}
+                <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <Upload className="w-6 h-6 text-gray-400" />
+                    <span className="text-[10px] text-gray-500 mt-1">Adicionar</span>
+                    <input 
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        className="hidden" 
+                        onChange={handleFileChange}
+                    />
+                </label>
+            </div>
+            {isUploading && <p className="text-xs text-blue-500">Processando imagens...</p>}
         </div>
 
         {/* Cost Calculation Section */}

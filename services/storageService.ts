@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord, CalculationType } from '../types';
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://otajfsjtpucdmkwgmeku.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_tUhxD-ixI7mhxhvB5FYVGQ_FCkLGa6h';
+const SUPABASE_URL = 'https://vfctdeaeahhermgzlaml.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_9vJxl7Ogf1ZZ9mlNyHj6DQ_pW3HJhK2';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -69,7 +69,8 @@ export const fetchAppState = async (): Promise<AppState> => {
       timeSpent: Number(i.time_spent) || 0,
       hourlyRate: Number(i.hourly_rate) || 0,
       materialCost: Number(i.material_cost) || 0,
-      totalCost: Number(i.total_cost) || 0
+      totalCost: Number(i.total_cost) || 0,
+      photos: i.photos || []
     }));
 
     const innovations: InnovationRecord[] = (innovationsData || []).map((inv: any) => ({
@@ -176,7 +177,8 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
       time_spent: issue.timeSpent,
       hourly_rate: issue.hourlyRate,
       material_cost: issue.materialCost,
-      total_cost: issue.totalCost
+      total_cost: issue.totalCost,
+      photos: issue.photos
     }]);
 
     if (error) throw error;

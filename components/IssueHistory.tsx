@@ -131,6 +131,21 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                     </div>
                 </div>
               )}
+
+              {/* Photos */}
+              {issue.photos && issue.photos.length > 0 && (
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                  {issue.photos.map((photo, idx) => (
+                    <img 
+                      key={idx} 
+                      src={photo} 
+                      alt={`Evidência ${idx + 1}`} 
+                      className="w-16 h-16 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => window.open(photo, '_blank')}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ))
         ) : (
