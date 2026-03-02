@@ -125,9 +125,10 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
         </div>
       </div>
 
-      {/* Results Table */}
+      {/* Results Table / Cards */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
               <tr>
@@ -253,6 +254,88 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4 p-4 bg-gray-50">
+          {filteredProjects.map((project) => {
+             const { parts, assemblies } = getVariationCounts(project.variations);
+             const totalVariations = (project.variations || []).length;
+             return (
+              <div key={project.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex justify-between items-start mb-3">
+                   <div>
+                      <div className="font-mono font-bold text-lg text-gray-800">{project.ns}</div>
+                      <div className="text-xs text-gray-500 font-medium">{project.clientName || 'Cliente N/A'}</div>
+                   </div>
+                   <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                      project.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {project.status === 'COMPLETED' ? 'Concluído' : 'Em And.'}
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                   <div>
+                      <span className="text-xs text-gray-400 block">Tipo</span>
+                      <span className="font-medium text-gray-700">{project.type}</span>
+                   </div>
+                   <div>
+                      <span className="text-xs text-gray-400 block">Implemento</span>
+                      <span className="font-medium text-gray-700 flex items-center">
+                        <Truck className="w-3 h-3 mr-1" /> {project.implementType || '-'}
+                      </span>
+                   </div>
+                   <div>
+                      <span className="text-xs text-gray-400 block">Projetista</span>
+                      <span className="font-medium text-gray-700">{usersMap[project.userId || ''] || 'Desconhecido'}</span>
+                   </div>
+                   <div>
+                      <span className="text-xs text-gray-400 block">Duração</span>
+                      <span className="font-medium text-gray-700 flex items-center">
+                         <Clock className="w-3 h-3 mr-1" /> {formatDuration(project.totalActiveSeconds)}
+                      </span>
+                   </div>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                   <div className="text-xs">
+                      {totalVariations > 0 ? (
+                        <div className="flex items-center gap-2">
+                           <span className="font-bold text-gray-700">{totalVariations} Variações</span>
+                           <span className="text-gray-400">({parts} Pç, {assemblies} Mont)</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Sem variações</span>
+                      )}
+                   </div>
+                   <div className="flex gap-2">
+                      {totalVariations > 0 && (
+                        <button 
+                            onClick={() => setSelectedProject(project)}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg"
+                        >
+                            <Eye className="w-4 h-4" />
+                        </button>
+                      )}
+                      {isGestor && (
+                        <button 
+                            onClick={() => onDelete && onDelete(project.id)}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                   </div>
+                </div>
+              </div>
+             );
+          })}
+           {filteredProjects.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                Nenhum projeto encontrado.
+              </div>
+           )}
         </div>
       </div>
 

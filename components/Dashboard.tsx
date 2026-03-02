@@ -176,17 +176,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
   // Date Filter Component
   const DateFilter = ({ value, onChange }: { value: { start: string, end: string }, onChange: (v: { start: string, end: string }) => void }) => (
-    <div className="flex gap-2 mb-4 justify-end">
+    <div className="flex flex-col sm:flex-row gap-2 mb-4 justify-end w-full sm:w-auto">
         <input 
             type="date" 
-            className="text-xs border rounded p-1" 
+            className="text-xs border rounded p-1 w-full sm:w-auto" 
             value={value.start} 
             onChange={e => onChange({ ...value, start: e.target.value })} 
         />
-        <span className="text-gray-400">-</span>
+        <span className="text-gray-400 hidden sm:inline">-</span>
         <input 
             type="date" 
-            className="text-xs border rounded p-1" 
+            className="text-xs border rounded p-1 w-full sm:w-auto" 
             value={value.end} 
             onChange={e => onChange({ ...value, end: e.target.value })} 
         />
@@ -231,34 +231,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       
       {/* Date Filter Section */}
       <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center text-gray-700 font-bold">
+        <div className="flex items-center text-gray-700 font-bold w-full md:w-auto">
           <Filter className="w-5 h-5 mr-2 text-blue-600" />
           Período de Análise
         </div>
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">De:</span>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs text-gray-500 w-8 sm:w-auto">De:</span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm flex-1 sm:flex-none w-full sm:w-auto"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Até:</span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs text-gray-500 w-8 sm:w-auto">Até:</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm flex-1 sm:flex-none w-full sm:w-auto"
             />
           </div>
         </div>
         {!isRestrictedRole && (
           <button 
             onClick={handleExportCSV}
-            className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors ml-auto md:ml-0"
+            className="flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors w-full md:w-auto"
           >
             <Download className="w-4 h-4 mr-2" />
             CSV

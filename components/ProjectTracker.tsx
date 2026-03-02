@@ -440,15 +440,15 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
         <div className="space-y-6">
             {/* Main Tracker Card */}
             <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 relative">
-                <div className="flex justify-between items-start mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
                     <h2 className="text-xl font-bold flex items-center text-gray-800">
                         <Clock className="w-6 h-6 mr-2 text-blue-600" />
                         Rastreador Ativo
                     </h2>
-                    <div className="text-right">
+                    <div className="text-left md:text-right w-full md:w-auto bg-gray-50 md:bg-transparent p-3 md:p-0 rounded-lg">
                         <div className="font-bold text-lg text-gray-700">{activeProject.ns}</div>
                         <div className="text-xs text-gray-500 font-semibold">{activeProject.clientName}</div>
-                        <div className="text-xs text-gray-400 flex flex-col items-end mt-1">
+                        <div className="text-xs text-gray-400 flex flex-col items-start md:items-end mt-1">
                             <span>{activeProject.implementType} {activeProject.flooringType ? `• ${activeProject.flooringType}` : ''}</span>
                             <div className="mt-1 flex items-center">
                                 <span className="mr-1 text-gray-500">Cod:</span>
@@ -458,7 +458,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                                     onChange={(e) => handleUpdateActiveProjectCode(e.target.value)}
                                     onBlur={saveProjectCode}
                                     placeholder="Inserir Código"
-                                    className="border-b border-gray-300 text-right text-xs focus:border-blue-500 focus:outline-none w-24 bg-transparent"
+                                    className="border-b border-gray-300 text-left md:text-right text-xs focus:border-blue-500 focus:outline-none w-24 bg-transparent"
                                 />
                                 <Edit3 className="w-3 h-3 ml-1 text-gray-400" />
                             </div>
@@ -471,7 +471,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                         <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
                         Executando
                     </span>
-                    <div className="text-7xl font-mono font-bold text-blue-600 tracking-tight">
+                    <div className="text-5xl md:text-7xl font-mono font-bold text-blue-600 tracking-tight">
                         {formatTime(elapsedSeconds)}
                     </div>
                     <div className="mt-4 flex gap-4 text-sm text-gray-500">
@@ -566,8 +566,62 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                      </div>
                  </div>
 
-                 {/* Table */}
-                 <div className="overflow-x-auto">
+                 {/* Mobile Card View */}
+                 <div className="md:hidden space-y-4">
+                    {activeProject.variations.map((v) => (
+                        <div key={v.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="text-xs text-gray-500 font-semibold">Descrição</div>
+                                    <div className="font-medium text-gray-800">{v.description}</div>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-xs ${v.type === 'Montagem' ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-700'}`}>
+                                    {v.type}
+                                </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <div className="text-xs text-gray-500 font-semibold">Cód. Antigo</div>
+                                    <div className="font-mono text-sm text-gray-600">{v.oldCode || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-gray-500 font-semibold">Cód. Novo</div>
+                                    <div className="font-mono text-sm text-blue-600 font-bold">{v.newCode || '-'}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                                <button 
+                                    onClick={() => handleToggleVariationFiles(v.id)}
+                                    className={`flex items-center px-3 py-1.5 rounded text-xs font-bold transition-colors ${
+                                        v.filesGenerated 
+                                        ? 'bg-green-100 text-green-600' 
+                                        : 'bg-white border border-gray-300 text-gray-500'
+                                    }`}
+                                >
+                                    {v.filesGenerated ? <FileCheck className="w-3 h-3 mr-1" /> : <Square className="w-3 h-3 mr-1" />}
+                                    {v.filesGenerated ? 'Arquivos OK' : 'Pendente'}
+                                </button>
+
+                                <button 
+                                    onClick={() => handleDeleteVariation(v.id)}
+                                    className="text-gray-400 hover:text-red-500 p-1"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    {activeProject.variations.length === 0 && (
+                        <div className="text-center text-gray-400 italic py-4">
+                            Nenhuma variação registrada.
+                        </div>
+                    )}
+                 </div>
+
+                 {/* Desktop Table View */}
+                 <div className="hidden md:block overflow-x-auto">
                      <table className="w-full text-sm text-left">
                          <thead className="bg-gray-100 text-gray-600 font-semibold">
                              <tr>
@@ -609,7 +663,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
                                             onClick={() => handleDeleteVariation(v.id)}
                                             className="text-gray-400 hover:text-red-500"
                                          >
-                                             <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="w-4 h-4" />
                                          </button>
                                      </td>
                                  </tr>

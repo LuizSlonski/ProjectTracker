@@ -332,116 +332,206 @@ const InnovationManager: React.FC<InnovationManagerProps> = ({ innovations, onAd
 
       {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
-            <tr>
-              <th className="p-4">Melhoria</th>
-              <th className="p-4">Cálculo</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-right">Impacto Anual</th>
-              {currentUser.role === 'GESTOR' && <th className="p-4 text-right">Gestão</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {sortedInnovations.map((inv) => (
-              <tr key={inv.id} className="hover:bg-gray-50 transition-colors group">
-                <td className="p-4 max-w-[250px]">
-                  <div className="font-bold text-gray-800 truncate" title={inv.title}>{inv.title}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        inv.type === InnovationType.NEW_PROJECT ? 'bg-purple-50 text-purple-700 border-purple-100' : 
-                        inv.type === InnovationType.PROCESS_OPTIMIZATION ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                        'bg-blue-50 text-blue-700 border-blue-100'
-                      }`}>
-                        {inv.type}
-                      </span>
-                  </div>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                    <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {new Date(inv.createdAt).toLocaleDateString()}</span>
-                    {inv.authorId && (
-                      <span className="flex items-center"><UserIcon className="w-3 h-3 mr-1"/> {usersMap[inv.authorId] || '...'}</span>
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+                <tr>
+                <th className="p-4">Melhoria</th>
+                <th className="p-4">Cálculo</th>
+                <th className="p-4">Status</th>
+                <th className="p-4 text-right">Impacto Anual</th>
+                {currentUser.role === 'GESTOR' && <th className="p-4 text-right">Gestão</th>}
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+                {sortedInnovations.map((inv) => (
+                <tr key={inv.id} className="hover:bg-gray-50 transition-colors group">
+                    <td className="p-4 max-w-[250px]">
+                    <div className="font-bold text-gray-800 truncate" title={inv.title}>{inv.title}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            inv.type === InnovationType.NEW_PROJECT ? 'bg-purple-50 text-purple-700 border-purple-100' : 
+                            inv.type === InnovationType.PROCESS_OPTIMIZATION ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                            'bg-blue-50 text-blue-700 border-blue-100'
+                        }`}>
+                            {inv.type}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                        <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {new Date(inv.createdAt).toLocaleDateString()}</span>
+                        {inv.authorId && (
+                        <span className="flex items-center"><UserIcon className="w-3 h-3 mr-1"/> {usersMap[inv.authorId] || '...'}</span>
+                        )}
+                    </div>
+                    </td>
+                    <td className="p-4 text-gray-600">
+                    {inv.calculationType === CalculationType.ONE_TIME ? (
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">Fixo</span>
+                    ) : (
+                        <div className="flex flex-col text-xs">
+                            <span className="font-medium text-gray-700">{formatCurrency(inv.unitSavings)}</span>
+                            <span className="text-gray-400">x {inv.quantity} {inv.calculationType === CalculationType.PER_UNIT ? 'un' : 'meses'}</span>
+                        </div>
                     )}
-                  </div>
-                </td>
-                <td className="p-4 text-gray-600">
-                   {inv.calculationType === CalculationType.ONE_TIME ? (
-                       <span className="text-xs bg-gray-100 px-2 py-1 rounded">Fixo</span>
-                   ) : (
-                       <div className="flex flex-col text-xs">
-                           <span className="font-medium text-gray-700">{formatCurrency(inv.unitSavings)}</span>
-                           <span className="text-gray-400">x {inv.quantity} {inv.calculationType === CalculationType.PER_UNIT ? 'un' : 'meses'}</span>
-                       </div>
-                   )}
-                </td>
-                <td className="p-4">
-                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(inv.status)}`}>
-                       {getStatusLabel(inv.status)}
-                   </span>
-                </td>
-                <td className="p-4 text-right">
-                  <div className={`font-mono font-bold text-lg ${
-                     inv.status === 'REJECTED' ? 'text-gray-400 line-through decoration-2' : 
-                     inv.status === 'PENDING' ? 'text-gray-500' :
-                     'text-emerald-600'
-                  }`}>
-                    {formatCurrency(inv.totalAnnualSavings)}
-                  </div>
-                  {inv.investmentCost && inv.investmentCost > 0 && (
-                      <div className="text-xs text-red-400 mt-1">Inv: -{formatCurrency(inv.investmentCost)}</div>
-                  )}
-                </td>
-                {currentUser.role === 'GESTOR' && (
+                    </td>
+                    <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(inv.status)}`}>
+                        {getStatusLabel(inv.status)}
+                    </span>
+                    </td>
                     <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                    <div className={`font-mono font-bold text-lg ${
+                        inv.status === 'REJECTED' ? 'text-gray-400 line-through decoration-2' : 
+                        inv.status === 'PENDING' ? 'text-gray-500' :
+                        'text-emerald-600'
+                    }`}>
+                        {formatCurrency(inv.totalAnnualSavings)}
+                    </div>
+                    {inv.investmentCost && inv.investmentCost > 0 && (
+                        <div className="text-xs text-red-400 mt-1">Inv: -{formatCurrency(inv.investmentCost)}</div>
+                    )}
+                    </td>
+                    {currentUser.role === 'GESTOR' && (
+                        <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                                {inv.status === 'PENDING' && (
+                                    <>
+                                        <button 
+                                            onClick={() => onStatusChange(inv.id, 'APPROVED')}
+                                            title="Aprovar"
+                                            className="p-1.5 bg-green-50 text-green-600 rounded-md border border-green-200 hover:bg-green-100 hover:border-green-300 transition shadow-sm"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => onStatusChange(inv.id, 'REJECTED')}
+                                            title="Rejeitar"
+                                            className="p-1.5 bg-red-50 text-red-600 rounded-md border border-red-200 hover:bg-red-100 hover:border-red-300 transition shadow-sm"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
+                                {inv.status === 'APPROVED' && (
+                                    <button 
+                                        onClick={() => onStatusChange(inv.id, 'IMPLEMENTED')}
+                                        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition flex items-center shadow-sm"
+                                    >
+                                        <PlayCircle className="w-3 h-3 mr-1" />
+                                        Implementar
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => onDelete(inv.id)}
+                                    title="Excluir"
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition ml-2"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </td>
+                    )}
+                </tr>
+                ))}
+                {sortedInnovations.length === 0 && (
+                <tr>
+                    <td colSpan={5} className="p-12 text-center text-gray-400 border border-dashed border-gray-200 rounded-lg m-4">
+                    <Lightbulb className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    Nenhuma inovação registrada ainda.
+                    </td>
+                </tr>
+                )}
+            </tbody>
+            </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4 p-4 bg-gray-50">
+            {sortedInnovations.map((inv) => (
+                <div key={inv.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1 mr-2">
+                            <h4 className="font-bold text-gray-800 text-sm">{inv.title}</h4>
+                            <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                <UserIcon className="w-3 h-3 mr-1" /> {usersMap[inv.authorId] || '...'}
+                            </div>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${getStatusColor(inv.status)}`}>
+                            {getStatusLabel(inv.status)}
+                        </span>
+                    </div>
+                    
+                    <div className="mb-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border mb-2 ${
+                            inv.type === InnovationType.NEW_PROJECT ? 'bg-purple-50 text-purple-700 border-purple-100' : 
+                            inv.type === InnovationType.PROCESS_OPTIMIZATION ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                            'bg-blue-50 text-blue-700 border-blue-100'
+                        }`}>
+                            {inv.type}
+                        </span>
+                        <p className="text-xs text-gray-600 line-clamp-2">{inv.description}</p>
+                    </div>
+
+                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs text-gray-500">Impacto Anual:</span>
+                            <span className={`font-mono font-bold ${
+                                inv.status === 'REJECTED' ? 'text-gray-400 line-through' : 'text-emerald-600'
+                            }`}>
+                                {formatCurrency(inv.totalAnnualSavings)}
+                            </span>
+                        </div>
+                        {inv.investmentCost && inv.investmentCost > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-gray-400">Investimento:</span>
+                                <span className="text-red-400">-{formatCurrency(inv.investmentCost)}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {currentUser.role === 'GESTOR' && (
+                        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
                             {inv.status === 'PENDING' && (
                                 <>
                                     <button 
                                         onClick={() => onStatusChange(inv.id, 'APPROVED')}
-                                        title="Aprovar"
-                                        className="p-1.5 bg-green-50 text-green-600 rounded-md border border-green-200 hover:bg-green-100 hover:border-green-300 transition shadow-sm"
+                                        className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-bold border border-green-200"
                                     >
-                                        <Check className="w-4 h-4" />
+                                        Aprovar
                                     </button>
                                     <button 
                                         onClick={() => onStatusChange(inv.id, 'REJECTED')}
-                                        title="Rejeitar"
-                                        className="p-1.5 bg-red-50 text-red-600 rounded-md border border-red-200 hover:bg-red-100 hover:border-red-300 transition shadow-sm"
+                                        className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold border border-red-200"
                                     >
-                                        <X className="w-4 h-4" />
+                                        Rejeitar
                                     </button>
                                 </>
                             )}
                             {inv.status === 'APPROVED' && (
-                                 <button 
+                                <button 
                                     onClick={() => onStatusChange(inv.id, 'IMPLEMENTED')}
-                                    className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition flex items-center shadow-sm"
+                                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold"
                                 >
-                                    <PlayCircle className="w-3 h-3 mr-1" />
-                                    Implementar
+                                    Marcar Implementado
                                 </button>
                             )}
                             <button 
                                 onClick={() => onDelete(inv.id)}
-                                title="Excluir"
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition ml-2"
+                                className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>
                         </div>
-                    </td>
-                )}
-              </tr>
+                    )}
+                </div>
             ))}
             {sortedInnovations.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-12 text-center text-gray-400 border border-dashed border-gray-200 rounded-lg m-4">
-                  <Lightbulb className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                  Nenhuma inovação registrada ainda.
-                </td>
-              </tr>
+                <div className="text-center py-8 text-gray-400">
+                    Nenhuma inovação encontrada.
+                </div>
             )}
-          </tbody>
-        </table>
+        </div>
       </div>
     </div>
   );

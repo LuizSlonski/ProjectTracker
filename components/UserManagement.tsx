@@ -161,39 +161,69 @@ export const UserManagement: React.FC = () => {
            <h3 className="font-bold text-gray-700">Membros da Equipe</h3>
            {loadingList && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
         </div>
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 text-gray-600 font-medium">
-            <tr>
-              <th className="p-4">Nome</th>
-              <th className="p-4">Usuário</th>
-              <th className="p-4">Função</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
+        
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-600 font-medium">
+                <tr>
+                <th className="p-4">Nome</th>
+                <th className="p-4">Usuário</th>
+                <th className="p-4">Função</th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+                {users.map((u) => (
+                <tr key={u.id} className="hover:bg-gray-50">
+                    <td className="p-4 font-medium text-gray-800 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                        {u.name.charAt(0)}
+                    </div>
+                    {u.name}
+                    </td>
+                    <td className="p-4 text-gray-600">{u.username}</td>
+                    <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1 bg-gray-100 text-gray-700`}>
+                        {getRoleIcon(u.role)}
+                        {u.role}
+                    </span>
+                    </td>
+                </tr>
+                ))}
+                {!loadingList && users.length === 0 && (
+                <tr>
+                    <td colSpan={3} className="p-4 text-center text-gray-400">Nenhum usuário encontrado.</td>
+                </tr>
+                )}
+            </tbody>
+            </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-2 p-4 bg-gray-50">
             {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50">
-                <td className="p-4 font-medium text-gray-800 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
-                    {u.name.charAt(0)}
-                  </div>
-                  {u.name}
-                </td>
-                <td className="p-4 text-gray-600">{u.username}</td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1 bg-gray-100 text-gray-700`}>
-                    {getRoleIcon(u.role)}
-                    {u.role}
-                  </span>
-                </td>
-              </tr>
+                <div key={u.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-lg">
+                            {u.name.charAt(0)}
+                        </div>
+                        <div>
+                            <div className="font-bold text-gray-800">{u.name}</div>
+                            <div className="text-xs text-gray-500">@{u.username}</div>
+                        </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 bg-gray-100 text-gray-700`}>
+                        {getRoleIcon(u.role)}
+                        {u.role}
+                    </span>
+                </div>
             ))}
             {!loadingList && users.length === 0 && (
-              <tr>
-                <td colSpan={3} className="p-4 text-center text-gray-400">Nenhum usuário encontrado.</td>
-              </tr>
+                <div className="text-center p-4 text-gray-400">
+                    Nenhum usuário encontrado.
+                </div>
             )}
-          </tbody>
-        </table>
+        </div>
       </div>
     </div>
   );

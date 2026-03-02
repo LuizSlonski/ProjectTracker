@@ -172,28 +172,30 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
           </select>
         </div>
         
-        <div className="flex items-center gap-4 justify-end border-t pt-4">
-            <span className="text-sm font-medium text-gray-600 flex items-center">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-end border-t pt-4">
+            <span className="text-sm font-medium text-gray-600 flex items-center mb-2 md:mb-0">
                 <Calendar className="w-4 h-4 mr-2" />
                 Filtrar por Data:
             </span>
-            <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">De:</span>
-                <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
-                />
-            </div>
-            <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Até:</span>
-                <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
-                />
+            <div className="flex flex-row gap-4 w-full md:w-auto">
+                <div className="flex items-center gap-2 flex-1 md:flex-none">
+                    <span className="text-xs text-gray-500">De:</span>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm w-full"
+                    />
+                </div>
+                <div className="flex items-center gap-2 flex-1 md:flex-none">
+                    <span className="text-xs text-gray-500">Até:</span>
+                    <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm w-full"
+                    />
+                </div>
             </div>
         </div>
       </div>
@@ -368,14 +370,14 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               ) : (
                 // VIEW MODE
                 <>
-                  <div className="flex justify-between items-start mb-2 pr-16">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-2 pr-0 sm:pr-16 relative">
+                    <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-0">
                       <span className={`px-2 py-1 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-100`}>
                         {issue.type}
                       </span>
-                      <span className="font-mono font-bold text-gray-800">NS: {issue.projectNs}</span>
+                      <span className="font-mono font-bold text-gray-800 text-sm">NS: {issue.projectNs}</span>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-1 w-full sm:w-auto justify-between sm:justify-start">
                       <div className="flex items-center text-xs text-gray-400">
                         <Calendar className="w-3 h-3 mr-1" />
                         {formatDate(issue.date)}
@@ -383,7 +385,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                       {isGestor && issue.reportedBy && (
                         <div className="flex items-center text-xs text-gray-500 font-medium">
                           <UserIcon className="w-3 h-3 mr-1" />
-                          Reportado por: {usersMap[issue.reportedBy] || 'Desconhecido'}
+                          {usersMap[issue.reportedBy] || 'Desconhecido'}
                         </div>
                       )}
                     </div>
