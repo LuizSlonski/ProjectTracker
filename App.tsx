@@ -7,7 +7,7 @@ import { IssueHistory } from './components/IssueHistory';
 import { Dashboard } from './components/Dashboard';
 import { ProjectHistory } from './components/ProjectHistory';
 import { UserManagement } from './components/UserManagement';
-import { InnovationManager } from './components/InnovationManager';
+import InnovationManager from './components/InnovationManager';
 import { Login } from './components/Login';
 import { 
   fetchAppState, 
@@ -50,7 +50,7 @@ const App: React.FC = () => {
   // Auto-redirect based on role logic
   useEffect(() => {
       if (currentUser) {
-          if (currentUser.role === 'QUALIDADE') {
+          if (currentUser.role === 'QUALIDADE' || currentUser.role === 'GESTOR_QUALIDADE') {
               setActiveTab('issues');
           } else if (currentUser.role === 'PROCESSOS') {
               setActiveTab('innovations');
@@ -96,7 +96,7 @@ const App: React.FC = () => {
     }
 
     // QUALITY - Sees all Issues (to analyze), All Projects (for context in charts), No Innovations
-    if (role === 'QUALIDADE') {
+    if (role === 'QUALIDADE' || role === 'GESTOR_QUALIDADE') {
         return {
             projects: data.projects, // Needed for charts context
             issues: data.issues,
@@ -171,7 +171,8 @@ const App: React.FC = () => {
       alert('Problema registrado com sucesso.');
       setIssueTab('history');
     } catch (e) {
-      alert("Erro ao salvar problema.");
+      // Re-throw to let child component handle specific error messages
+      throw e;
     } finally {
       setIsLoading(false);
     }

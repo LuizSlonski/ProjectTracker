@@ -12,7 +12,7 @@ interface InnovationManagerProps {
   currentUser: User;
 }
 
-export const InnovationManager: React.FC<InnovationManagerProps> = ({ innovations, onAdd, onStatusChange, onDelete, currentUser }) => {
+const InnovationManager: React.FC<InnovationManagerProps> = ({ innovations, onAdd, onStatusChange, onDelete, currentUser }) => {
   const [showForm, setShowForm] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
@@ -446,3 +446,5 @@ export const InnovationManager: React.FC<InnovationManagerProps> = ({ innovation
     </div>
   );
 };
+
+export default InnovationManager;

@@ -50,7 +50,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     });
   };
 
-  const isGestor = currentUser.role === 'GESTOR';
+  const isGestor = currentUser.role === 'GESTOR' || currentUser.role === 'GESTOR_QUALIDADE';
 
   // Edit Handlers
   const startEditing = (issue: IssueRecord) => {
@@ -124,9 +124,13 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       setEditingIssueId(null);
       setEditForm({});
       if (onUpdate) onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating issue:", error);
-      alert('Erro ao atualizar ocorrência.');
+      if (error.message?.includes('column') || error.message?.includes('does not exist')) {
+          alert('Erro: Colunas ausentes no banco de dados. Por favor, execute o script de atualização SQL no Supabase.');
+      } else {
+          alert(`Erro ao atualizar ocorrência: ${error.message || 'Erro desconhecido'}`);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -354,7 +358,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                   </div>
                   
                   {/* Cost Details */}
-                  {(issue.totalCost || 0) > 0 && (
+                  {(issue.totalCost > 0 || issue.timeSpent > 0 || issue.materialCost > 0 || (issue.peopleInvolved && issue.peopleInvolved > 1)) && (
                     <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-4 text-xs">
                         <div className="flex flex-col">
                             <span className="text-gray-400">Tempo Gasto</span>

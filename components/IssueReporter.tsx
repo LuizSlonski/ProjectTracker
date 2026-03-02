@@ -55,7 +55,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ns.trim() || !description.trim()) return;
 
@@ -73,14 +73,23 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
       photos
     };
 
-    onReport(newIssue);
-    setNs('');
-    setDescription('');
-    setTimeSpent(0);
-    setHourlyRate(0);
-    setMaterialCost(0);
-    setPeopleInvolved(1);
-    setPhotos([]);
+    try {
+      await onReport(newIssue);
+      setNs('');
+      setDescription('');
+      setTimeSpent(0);
+      setHourlyRate(0);
+      setMaterialCost(0);
+      setPeopleInvolved(1);
+      setPhotos([]);
+    } catch (error: any) {
+      console.error("Error reporting issue:", error);
+      if (error.message?.includes('column') || error.message?.includes('does not exist')) {
+          alert('Erro: Colunas ausentes no banco de dados. Por favor, execute o script de atualização SQL no Supabase.');
+      } else {
+          alert(`Erro ao salvar ocorrência: ${error.message || 'Erro desconhecido'}`);
+      }
+    }
   };
 
   return (

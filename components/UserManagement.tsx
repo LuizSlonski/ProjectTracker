@@ -64,6 +64,7 @@ export const UserManagement: React.FC = () => {
           case 'CEO': return <Briefcase className="w-3 h-3 text-yellow-600" />;
           case 'PROCESSOS': return <Activity className="w-3 h-3 text-purple-600" />;
           case 'QUALIDADE': return <Eye className="w-3 h-3 text-red-600" />;
+          case 'GESTOR_QUALIDADE': return <Shield className="w-3 h-3 text-red-800" />;
           default: return <UserIcon className="w-3 h-3 text-gray-600" />;
       }
   };
@@ -138,6 +139,7 @@ export const UserManagement: React.FC = () => {
               <option value="CEO">CEO</option>
               <option value="PROCESSOS">Processos</option>
               <option value="QUALIDADE">Qualidade</option>
+              <option value="GESTOR_QUALIDADE">Gestor de Qualidade</option>
             </select>
           </div>
           <div className="md:col-span-2">
