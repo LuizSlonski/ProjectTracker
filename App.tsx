@@ -190,6 +190,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handleIssueUpdate = async () => {
+    setIsLoading(true);
+    try {
+      const updatedData = await fetchAppState();
+      setData(updatedData);
+    } catch (e) {
+      console.error("Failed to refresh data after update", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleInnovationAdd = async (innovation: InnovationRecord) => {
     setIsLoading(true);
     // Optimistic Update
@@ -469,6 +481,7 @@ const App: React.FC = () => {
                   data={displayData} 
                   currentUser={currentUser} 
                   onDelete={handleIssueDelete}
+                  onUpdate={handleIssueUpdate}
                 />
               )}
             </div>
