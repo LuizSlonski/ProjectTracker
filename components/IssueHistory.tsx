@@ -113,16 +113,22 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     }));
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const saveEdit = async () => {
     if (!editForm.id || !editForm.projectNs || !editForm.description) return;
     
+    setIsSaving(true);
     try {
       await updateIssue(editForm as IssueRecord);
       setEditingIssueId(null);
       setEditForm({});
       if (onUpdate) onUpdate();
     } catch (error) {
+      console.error("Error updating issue:", error);
       alert('Erro ao atualizar ocorrência.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -300,10 +306,20 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                     </button>
                     <button
                       onClick={saveEdit}
-                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                      disabled={isSaving}
+                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Save className="w-4 h-4" />
-                      Salvar Alterações
+                      {isSaving ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          Salvar Alterações
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
