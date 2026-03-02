@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Lock, User as UserIcon, LogIn, Loader2 } from 'lucide-react';
 import { authenticateUser } from '../services/storageService';
 import { User } from '../types';
-import logoImg from '../src/assets/logo.png';
+
+// Placeholder for logo
+const logoImg = "https://placehold.co/150x50?text=Logo";
 
 interface LoginProps {
   onLogin: (user: User) => void;

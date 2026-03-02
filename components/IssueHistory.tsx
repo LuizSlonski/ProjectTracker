@@ -109,6 +109,28 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                   {issue.description}
                 </p>
               </div>
+              
+              {/* Cost Details */}
+              {(issue.totalCost || 0) > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-4 text-xs">
+                    <div className="flex flex-col">
+                        <span className="text-gray-400">Tempo Gasto</span>
+                        <span className="font-semibold text-gray-700">{issue.timeSpent || 0} min</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-gray-400">Custo Material</span>
+                        <span className="font-semibold text-gray-700">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(issue.materialCost || 0)}
+                        </span>
+                    </div>
+                    <div className="flex flex-col ml-auto text-right">
+                        <span className="text-gray-400">Custo Total</span>
+                        <span className="font-bold text-red-600 text-sm">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(issue.totalCost || 0)}
+                        </span>
+                    </div>
+                </div>
+              )}
             </div>
           ))
         ) : (

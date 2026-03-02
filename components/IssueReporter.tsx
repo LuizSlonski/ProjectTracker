@@ -13,6 +13,16 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
   // Set default to Engenharia or the first item in the list
   const [type, setType] = useState<IssueType>(IssueType.ENGENHARIA);
   const [description, setDescription] = useState('');
+  
+  // Cost tracking states
+  const [timeSpent, setTimeSpent] = useState<number>(0);
+  const [hourlyRate, setHourlyRate] = useState<number>(0);
+  const [materialCost, setMaterialCost] = useState<number>(0);
+
+  const calculateTotal = () => {
+    const laborCost = (timeSpent / 60) * hourlyRate;
+    return laborCost + materialCost;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,42 +33,51 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
       projectNs: ns,
       type,
       description,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      timeSpent,
+      hourlyRate,
+      materialCost,
+      totalCost: calculateTotal()
     };
 
     onReport(newIssue);
     setNs('');
     setDescription('');
+    setTimeSpent(0);
+    setHourlyRate(0);
+    setMaterialCost(0);
   };
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
       <h2 className="text-xl font-bold mb-4 flex items-center text-red-600">
         <AlertTriangle className="w-6 h-6 mr-2" />
-        Reportar Problema
+        Reportar Problema de Qualidade
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">NS do Produto Afetado</label>
-          <input 
-            type="text" 
-            value={ns}
-            onChange={e => setNs(e.target.value)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
-            placeholder="Ex: 123456"
-            required
-          />
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">NS do Produto Afetado</label>
+            <input 
+                type="text" 
+                value={ns}
+                onChange={e => setNs(e.target.value)}
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                placeholder="Ex: 123456"
+                required
+            />
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Setor / Origem da Falha</label>
-          <select 
-            value={type}
-            onChange={e => setType(e.target.value as IssueType)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
-          >
-            {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Setor / Origem da Falha</label>
+            <select 
+                value={type}
+                onChange={e => setType(e.target.value as IssueType)}
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
+            >
+                {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            </div>
         </div>
 
         <div>
@@ -71,6 +90,54 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             placeholder="Descreva o que aconteceu..."
             required
           />
+        </div>
+
+        {/* Cost Calculation Section */}
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Custo do Retrabalho</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Tempo Gasto (minutos)</label>
+                    <input 
+                        type="number" 
+                        min="0"
+                        value={timeSpent}
+                        onChange={e => setTimeSpent(Number(e.target.value))}
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                        placeholder="0"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Custo Hora (R$)</label>
+                    <input 
+                        type="number" 
+                        min="0"
+                        step="0.01"
+                        value={hourlyRate}
+                        onChange={e => setHourlyRate(Number(e.target.value))}
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                        placeholder="0.00"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Custo Material (R$)</label>
+                    <input 
+                        type="number" 
+                        min="0"
+                        step="0.01"
+                        value={materialCost}
+                        onChange={e => setMaterialCost(Number(e.target.value))}
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                        placeholder="0.00"
+                    />
+                </div>
+            </div>
+            <div className="mt-3 flex justify-end items-center border-t border-gray-200 pt-2">
+                <span className="text-sm text-gray-500 mr-2">Custo Total Estimado:</span>
+                <span className="text-lg font-bold text-red-600">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTotal())}
+                </span>
+            </div>
         </div>
 
         <button 

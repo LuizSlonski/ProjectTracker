@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   PieChart, Pie, Cell 
 } from 'recharts';
-import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, Truck, User as UserIcon, Lightbulb, TrendingDown } from 'lucide-react';
+import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, Truck, User as UserIcon, Lightbulb, TrendingDown, AlertTriangle } from 'lucide-react';
 import { AppState, User, InnovationType } from '../types';
 import { analyzePerformance } from '../services/geminiService';
 import { fetchUsers } from '../services/storageService';
@@ -106,6 +106,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         return acc;
     }, 0);
   }, [filteredInnovations]);
+
+  // 1.6 Calculate Total Rework Cost
+  const totalReworkCost = useMemo(() => {
+    return filteredIssues.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+  }, [filteredIssues]);
+
+  // 1.7 Calculate Cost by Issue Type
+  const costByTypeData = useMemo(() => {
+    const costs = filteredIssues.reduce((acc, curr) => {
+        const typeKey = String(curr.type);
+        acc[typeKey] = (acc[typeKey] || 0) + (curr.totalCost || 0);
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(costs)
+        .map(([name, value]) => ({ name, value: Number(value) }))
+        .sort((a, b) => a.value - b.value ? b.value - a.value : 0) // Robust sort
+        .slice(0, 5); // Top 5
+  }, [filteredIssues]);
 
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -299,6 +318,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                 <TrendingDown className="w-4 h-4" />
               </div>
             </div>
+            
+            {/* Rework Cost KPI */}
+            <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Custo de Retrabalho</p>
+                <p className="text-xl font-bold text-red-800">{formatCurrency(totalReworkCost)}</p>
+              </div>
+              <div className="h-8 w-8 bg-red-50 rounded-full flex items-center justify-center text-red-600">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+            </div>
         </div>
       )}
 
@@ -333,6 +363,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
+        {/* Cost by Issue Type (Bar Chart) - NEW */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px]">
+            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
+                <TrendingDown className="w-5 h-5 mr-2 text-red-500" />
+                Custo por Tipo de Erro (Top 5)
+            </h3>
+            <div className="h-[250px] w-full">
+                {costByTypeData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={costByTypeData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                        <XAxis type="number" tickFormatter={(val) => `R$${val}`} tickLine={false} axisLine={false} style={{fontSize: '10px'}} />
+                        <YAxis dataKey="name" type="category" width={120} tickLine={false} axisLine={false} style={{fontSize: '11px'}} />
+                        <Tooltip formatter={(val: number) => formatCurrency(val)} cursor={{ fill: '#f3f4f6' }} />
+                        <Bar dataKey="value" name="Custo" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={20} />
+                    </BarChart>
+                </ResponsiveContainer>
+                ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                    Sem dados de custo para exibir.
+                </div>
+                )}
+            </div>
+        </div>
+
         {/* Issue Distribution (Pie Chart) - VISIBLE TO EVERYONE */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[350px] col-span-1 md:col-span-2 lg:col-span-1">
           <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">

@@ -97,6 +97,12 @@ export interface IssueRecord {
   description: string;
   date: string;
   reportedBy?: string; // Track who reported
+  
+  // Cost & Quality Control Fields
+  timeSpent?: number; // Minutes spent on rework
+  hourlyRate?: number; // Cost per hour
+  materialCost?: number; // Direct material cost
+  totalCost?: number; // Calculated total cost
 }
 
 export interface InnovationRecord {

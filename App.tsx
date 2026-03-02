@@ -21,9 +21,9 @@ import {
   deleteInnovation
 } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
-import logoImg from './src/assets/logo.png'; 
 
-const COMPANY_LOGO_URL = logoImg;
+// Placeholder for logo
+const COMPANY_LOGO_URL = "https://placehold.co/150x50?text=Logo";
 
 const App: React.FC = () => {
   // Auth State

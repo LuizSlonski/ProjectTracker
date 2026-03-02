@@ -65,7 +65,11 @@ export const fetchAppState = async (): Promise<AppState> => {
       type: i.type,
       description: i.description,
       date: i.date,
-      reportedBy: i.reported_by
+      reportedBy: i.reported_by,
+      timeSpent: Number(i.time_spent) || 0,
+      hourlyRate: Number(i.hourly_rate) || 0,
+      materialCost: Number(i.material_cost) || 0,
+      totalCost: Number(i.total_cost) || 0
     }));
 
     const innovations: InnovationRecord[] = (innovationsData || []).map((inv: any) => ({
@@ -168,7 +172,11 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
       type: issue.type,
       description: issue.description,
       date: issue.date,
-      reported_by: issue.reportedBy
+      reported_by: issue.reportedBy,
+      time_spent: issue.timeSpent,
+      hourly_rate: issue.hourlyRate,
+      material_cost: issue.materialCost,
+      total_cost: issue.totalCost
     }]);
 
     if (error) throw error;
