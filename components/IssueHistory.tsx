@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2 } from 'lucide-react';
+import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X } from 'lucide-react';
 import { AppState, IssueType, User } from '../types';
 import { ISSUE_TYPES } from '../constants';
 import { fetchUsers } from '../services/storageService';
@@ -15,6 +15,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   const [filterNs, setFilterNs] = useState('');
   const [filterType, setFilterType] = useState<string>('');
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -141,7 +142,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                       src={photo} 
                       alt={`Evidência ${idx + 1}`} 
                       className="w-16 h-16 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => window.open(photo, '_blank')}
+                      onClick={() => setSelectedImage(photo)}
                     />
                   ))}
                 </div>
@@ -155,6 +156,29 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            onClick={() => setSelectedImage(null)}
+        >
+            <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
+                <button 
+                    onClick={() => setSelectedImage(null)}
+                    className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2"
+                >
+                    <X className="w-8 h-8" />
+                </button>
+                <img 
+                    src={selectedImage} 
+                    alt="Evidência Ampliada" 
+                    className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                    onClick={(e) => e.stopPropagation()} 
+                />
+            </div>
+        </div>
+      )}
     </div>
   );
 };
