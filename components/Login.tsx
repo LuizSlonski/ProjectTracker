@@ -98,8 +98,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-xs text-slate-500">
-          <span className="text-blue-500 font-bold">JIMP</span><span className="text-orange-500 font-bold">NEXUS</span> &copy; 2024
+        <div className="mt-8 text-center text-sm text-slate-500">
+          <span className="text-blue-500 font-bold text-lg">JIMP</span><span className="text-orange-500 font-bold text-lg">NEXUS</span> &copy; 2026
         </div>
       </div>
     </div>

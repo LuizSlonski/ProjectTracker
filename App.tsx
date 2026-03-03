@@ -333,8 +333,8 @@ const App: React.FC = () => {
             <LogOut className="w-4 h-4 mr-2" />
             Sair da Conta
           </button>
-          <div className="text-center text-[10px] text-slate-600 font-bold">
-            <span className="text-blue-500">JIMP</span><span className="text-orange-500">NEXUS</span>
+          <div className="text-center text-xs text-slate-600 font-bold">
+            <span className="text-blue-500 text-sm">JIMP</span><span className="text-orange-500 text-sm">NEXUS</span>
           </div>
         </div>
       </aside>
