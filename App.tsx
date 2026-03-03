@@ -50,12 +50,12 @@ const App: React.FC = () => {
   // Auto-redirect based on role logic
   useEffect(() => {
       if (currentUser) {
-          if (currentUser.role === 'QUALIDADE' || currentUser.role === 'GESTOR_QUALIDADE') {
+          if (currentUser.role === 'QUALIDADE' || currentUser.role === 'GESTOR_QUALIDADE' || currentUser.role === 'CEO') {
               setActiveTab('issues');
           } else if (currentUser.role === 'PROCESSOS') {
               setActiveTab('innovations');
           } else {
-              // GESTOR, CEO, PROJETISTA default to tracker
+              // GESTOR, PROJETISTA default to tracker
               setActiveTab('tracker');
           }
       }
@@ -66,19 +66,19 @@ const App: React.FC = () => {
   // Who can see ALL project history?
   const canSeeAllHistory = useMemo(() => {
       if (!currentUser) return false;
-      return ['GESTOR', 'CEO'].includes(currentUser.role);
+      return ['GESTOR'].includes(currentUser.role);
   }, [currentUser]);
 
   const canUseTracker = useMemo(() => {
       if (!currentUser) return false;
-      // Quality and Process CANNOT use tracker or see history
-      return ['PROJETISTA', 'GESTOR', 'CEO'].includes(currentUser.role);
+      // Quality, Process and CEO CANNOT use tracker or see history
+      return ['PROJETISTA', 'GESTOR'].includes(currentUser.role);
   }, [currentUser]);
 
-  // Who can manage Innovations? (CEO, Processes, Manager, Designer)
+  // Who can manage Innovations? (Processes, Manager, Designer)
   const canSeeInnovations = useMemo(() => {
       if (!currentUser) return false;
-      return ['GESTOR', 'CEO', 'PROCESSOS', 'PROJETISTA'].includes(currentUser.role);
+      return ['GESTOR', 'PROCESSOS', 'PROJETISTA'].includes(currentUser.role);
   }, [currentUser]);
   
   // Who can see Dashboard? (Everyone)
@@ -91,12 +91,12 @@ const App: React.FC = () => {
     const role = currentUser.role;
 
     // "Super Viewers" - See everything in DB
-    if (['GESTOR', 'CEO', 'PROCESSOS'].includes(role)) {
+    if (['GESTOR', 'PROCESSOS'].includes(role)) {
       return data;
     }
 
-    // QUALITY - Sees all Issues (to analyze), All Projects (for context in charts), No Innovations
-    if (role === 'QUALIDADE' || role === 'GESTOR_QUALIDADE') {
+    // QUALITY & CEO - Sees all Issues (to analyze), All Projects (for context in charts), No Innovations
+    if (role === 'QUALIDADE' || role === 'GESTOR_QUALIDADE' || role === 'CEO') {
         return {
             projects: data.projects, // Needed for charts context
             issues: data.issues,
