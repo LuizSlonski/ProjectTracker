@@ -208,17 +208,17 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               
               {/* Actions */}
               {isGestor && editingIssueId !== issue.id && (
-                <div className="absolute top-4 right-4 flex gap-2">
+                <div className="absolute top-4 right-4 flex gap-2 z-10">
                   <button 
                     onClick={() => startEditing(issue)}
-                    className="text-gray-300 hover:text-blue-500 hover:bg-blue-50 p-2 rounded transition"
+                    className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors border border-transparent hover:border-blue-100"
                     title="Editar"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => onDelete && onDelete(issue.id)}
-                    className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded transition"
+                    className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100"
                     title="Excluir"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -370,7 +370,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               ) : (
                 // VIEW MODE
                 <>
-                  <div className="flex flex-col sm:flex-row justify-between items-start mb-2 pr-0 sm:pr-16 relative">
+                  <div className={`flex flex-col sm:flex-row justify-between items-start mb-2 relative ${isGestor ? 'pr-20' : ''}`}>
                     <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-0">
                       <span className={`px-2 py-1 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-100`}>
                         {issue.type}
