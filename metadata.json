@@ -1,5 +1,5 @@
 {
-  "name": "ProjectTracker",
+  "name": "QualityTracker",
   "description": "Uma aplicação completa para projetistas gerenciarem liberações, cronometrar tempo de projetos e reportar problemas, com armazenamento em nuvem.",
   "requestFramePermissions": []
 }

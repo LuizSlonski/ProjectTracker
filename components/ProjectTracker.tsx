@@ -39,7 +39,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [pauseReason, setPauseReason] = useState('');
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<number | null>(null);
   const pendingProjects = existingProjects.filter(p => p.status === 'IN_PROGRESS');
 
   // Helper to check if flooring field should show
@@ -78,13 +78,13 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
 
     if (activeProject && !showPauseModal) {
       updateTimer(); // Initial call
-      timerRef.current = setInterval(updateTimer, 1000);
+      timerRef.current = window.setInterval(updateTimer, 1000);
     } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) window.clearInterval(timerRef.current);
     }
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) window.clearInterval(timerRef.current);
     };
   }, [activeProject, showPauseModal]);
 
@@ -268,7 +268,7 @@ export const ProjectTracker: React.FC<ProjectTrackerProps> = ({ existingProjects
       "summary": "Projeto Finalizado",
       "sections": [{
         "activityTitle": "✅ Projeto Finalizado",
-        "activitySubtitle": `DesignTrack Pro`,
+        "activitySubtitle": `QualityTracker`,
         "facts": [
           { "name": "NS:", "value": project.ns },
           { "name": "Cliente:", "value": project.clientName || "-" },

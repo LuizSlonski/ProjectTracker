@@ -290,7 +290,7 @@ const App: React.FC = () => {
              />
              <div className="flex flex-col">
                 <span className="text-2xl font-bold text-white leading-none tracking-tight">
-                  Project<span className="text-blue-500">Tracker</span>
+                  Quality<span className="text-blue-500">Tracker</span>
                 </span>
              </div>
           </div>
@@ -328,11 +328,14 @@ const App: React.FC = () => {
         <div className="p-6 border-t border-slate-800 bg-slate-900">
           <button 
             onClick={handleLogout}
-            className="flex items-center text-sm text-red-400 hover:text-red-300 hover:bg-slate-800/50 p-2 rounded-lg font-medium transition-colors w-full"
+            className="flex items-center text-sm text-red-400 hover:text-red-300 hover:bg-slate-800/50 p-2 rounded-lg font-medium transition-colors w-full mb-4"
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sair da Conta
           </button>
+          <div className="text-center text-[10px] text-slate-600 font-bold">
+            <span className="text-blue-500">JIMP</span><span className="text-orange-500">NEXUS</span>
+          </div>
         </div>
       </aside>
 
@@ -345,7 +348,7 @@ const App: React.FC = () => {
                 className="h-full w-auto object-contain"
             />
             <span className="text-lg font-bold text-white">
-                Project<span className="text-blue-500">Tracker</span>
+                Quality<span className="text-blue-500">Tracker</span>
             </span>
         </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-300 hover:text-white transition-colors">

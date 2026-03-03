@@ -45,7 +45,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                className="h-24 w-auto object-contain"
              />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Project<span className="text-blue-500">Tracker</span></h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">
+            Quality<span className="text-blue-500">Tracker</span>
+          </h1>
           <p className="text-slate-400 text-sm">Entre com suas credenciais para continuar</p>
         </div>
 
@@ -96,8 +98,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-xs text-slate-600">
-          ProjectTracker &copy; 2024
+        <div className="mt-8 text-center text-xs text-slate-500">
+          <span className="text-blue-500 font-bold">JIMP</span><span className="text-orange-500 font-bold">NEXUS</span> &copy; 2024
         </div>
       </div>
     </div>
