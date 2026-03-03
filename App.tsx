@@ -390,8 +390,17 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 md:ml-64 p-6 pt-24 md:pt-6 transition-all bg-gray-50 min-h-screen">
         {isLoading && (
-          <div className="fixed top-0 left-0 w-full h-1 bg-blue-100 z-50">
-            <div className="h-full bg-blue-600 animate-pulse w-full"></div>
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity">
+            <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-300">
+              <div className="relative mb-4">
+                <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                </div>
+              </div>
+              <span className="text-lg font-bold text-gray-800">Quality<span className="text-blue-600">Tracker</span></span>
+              <span className="text-xs text-gray-500 mt-1 font-medium">Processando...</span>
+            </div>
           </div>
         )}
         <div className="max-w-5xl mx-auto">
