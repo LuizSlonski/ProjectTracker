@@ -1,8 +1,29 @@
 
-import React, { useState } from 'react';
-import { AlertTriangle, Plus, Upload, X, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Plus, Upload, X, Image as ImageIcon, Camera } from 'lucide-react';
 import { IssueType, IssueRecord } from '../types';
 import { ISSUE_TYPES } from '../constants';
+
+const HOURLY_RATES: Partial<Record<IssueType, number>> = {
+  [IssueType.ALMOXARIFADO]: 39.51,
+  [IssueType.BASCULANTE]: 45.41,
+  [IssueType.BASES]: 47.49,
+  [IssueType.CARPINTARIA]: 49.69,
+  [IssueType.CHAPEACAO]: 36.86,
+  [IssueType.CORTE_DOBRA]: 44.51,
+  [IssueType.ELETRICA_ABS_EBS]: 46.10,
+  [IssueType.MECANICA]: 31.69,
+  [IssueType.MECANICA_SOBRE_CHASSI]: 31.69,
+  [IssueType.MECANICA_SR]: 31.69,
+  [IssueType.MONTAGEM_CAIXA_CARGA]: 44.22,
+  [IssueType.MONTAGEM_CHASSI]: 44.22,
+  [IssueType.MONTAGEM_LONADO]: 37.46,
+  [IssueType.MONTAGEM_TETO]: 44.22,
+  [IssueType.OFICINA]: 39.18,
+  [IssueType.OPERADOR_EMPILHADEIRA]: 39.31,
+  [IssueType.PINTURA]: 36.57,
+  [IssueType.PORTAS]: 39.54,
+};
 
 interface IssueReporterProps {
   onReport: (issue: IssueRecord) => void;
@@ -16,9 +37,18 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
   
   // Cost tracking states
   const [timeSpent, setTimeSpent] = useState<number>(0);
-  const [hourlyRate, setHourlyRate] = useState<number>(0);
+  const [hourlyRate, setHourlyRate] = useState<number>(HOURLY_RATES[IssueType.ENGENHARIA] || 0);
   const [materialCost, setMaterialCost] = useState<number>(0);
   const [peopleInvolved, setPeopleInvolved] = useState<number>(1);
+
+  const handleTypeChange = (newType: IssueType) => {
+    setType(newType);
+    if (HOURLY_RATES[newType] !== undefined) {
+      setHourlyRate(HOURLY_RATES[newType]!);
+    } else {
+      setHourlyRate(0); // Reset for manual input if no rate is mapped
+    }
+  };
 
   // Photo state
   const [photos, setPhotos] = useState<string[]>([]);
@@ -116,7 +146,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Setor / Origem da Falha</label>
             <select 
                 value={type}
-                onChange={e => setType(e.target.value as IssueType)}
+                onChange={e => handleTypeChange(e.target.value as IssueType)}
                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
             >
                 {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -153,8 +183,19 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
                     </div>
                 ))}
                 <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <Camera className="w-6 h-6 text-gray-400" />
+                    <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight">Tirar<br/>Foto</span>
+                    <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment"
+                        className="hidden" 
+                        onChange={handleFileChange}
+                    />
+                </label>
+                <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                     <Upload className="w-6 h-6 text-gray-400" />
-                    <span className="text-[10px] text-gray-500 mt-1">Adicionar</span>
+                    <span className="text-[10px] text-gray-500 mt-1">Galeria</span>
                     <input 
                         type="file" 
                         accept="image/*" 
