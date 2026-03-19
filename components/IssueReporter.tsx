@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Plus, Upload, X, Image as ImageIcon, Camera } from 'lucide-react';
 import { IssueType, IssueRecord } from '../types';
 import { ISSUE_TYPES } from '../constants';
+import { uploadPhoto } from '../services/storageService';
 
 const HOURLY_RATES: Partial<Record<IssueType, number>> = {
   [IssueType.ALMOXARIFADO]: 39.51,
@@ -59,25 +60,20 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
     return laborCost + materialCost;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setIsUploading(true);
       const files = Array.from(e.target.files);
       
-      const readers = files.map((file: any) => {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-
-      Promise.all(readers).then(results => {
-        setPhotos(prev => [...prev, ...results]);
+      try {
+        const uploadPromises = files.map((file: File) => uploadPhoto(file));
+        const urls = await Promise.all(uploadPromises);
+        setPhotos(prev => [...prev, ...urls]);
+      } catch (error) {
+        alert('Erro ao fazer upload das imagens. Verifique se o bucket "issues-photos" é público e permite uploads.');
+      } finally {
         setIsUploading(false);
-      });
+      }
     }
   };
 

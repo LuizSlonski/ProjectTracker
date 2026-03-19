@@ -18,27 +18,30 @@ const defaultState: AppState = {
 
 export const fetchAppState = async (): Promise<AppState> => {
   try {
-    // Fetch Projects
+    // Fetch Projects (Limited to last 100 to save Disk I/O)
     const { data: projectsData, error: projectsError } = await supabase
       .from('projects')
       .select('*')
-      .order('start_time', { ascending: false });
+      .order('start_time', { ascending: false })
+      .limit(100);
 
     if (projectsError) throw projectsError;
 
-    // Fetch Issues
+    // Fetch Issues (Limited to last 100 to save Disk I/O)
     const { data: issuesData, error: issuesError } = await supabase
       .from('issues')
       .select('*')
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .limit(100);
 
     if (issuesError) throw issuesError;
 
-    // Fetch Innovations
+    // Fetch Innovations (Limited to last 100 to save Disk I/O)
     const { data: innovationsData, error: innovationsError } = await supabase
       .from('innovations')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     
     // Map DB columns (snake_case) to Types (camelCase)
     const projects: ProjectSession[] = (projectsData || []).map((p: any) => ({
@@ -225,6 +228,32 @@ export const deleteIssue = async (id: string): Promise<AppState> => {
     return fetchAppState();
   } catch (error) {
     console.error("Failed to delete issue", error);
+    throw error;
+  }
+};
+
+export const uploadPhoto = async (file: File): Promise<string> => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('issues-photos')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('issues-photos')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error("Failed to upload photo", error);
     throw error;
   }
 };
