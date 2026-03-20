@@ -180,22 +180,11 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
                 ))}
                 <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                     <Camera className="w-6 h-6 text-gray-400" />
-                    <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight">Tirar<br/>Foto</span>
+                    <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight">Adicionar<br/>Foto</span>
                     <input 
                         type="file" 
                         accept="image/*" 
-                        capture="environment"
-                        className="hidden" 
-                        onChange={handleFileChange}
-                    />
-                </label>
-                <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    <Upload className="w-6 h-6 text-gray-400" />
-                    <span className="text-[10px] text-gray-500 mt-1">Galeria</span>
-                    <input 
-                        type="file" 
-                        accept="image/*" 
-                        multiple 
+                        multiple
                         className="hidden" 
                         onChange={handleFileChange}
                     />

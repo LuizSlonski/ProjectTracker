@@ -390,16 +390,17 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 md:ml-64 p-6 pt-24 md:pt-6 transition-all bg-gray-50 min-h-screen">
         {isLoading && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity">
-            <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              <div className="relative mb-4">
-                <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-md transition-all duration-300">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-300 transform scale-100">
+              <div className="relative mb-6">
+                <div className="w-16 h-16 border-4 border-blue-100 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce"></div>
                 </div>
               </div>
-              <span className="text-lg font-bold text-gray-800">Quality<span className="text-blue-600">Tracker</span></span>
-              <span className="text-xs text-gray-500 mt-1 font-medium">Processando...</span>
+              <span className="text-xl font-bold text-gray-800 tracking-tight">Quality<span className="text-blue-600">Tracker</span></span>
+              <span className="text-sm text-gray-500 mt-2 font-medium animate-pulse">Processando informações...</span>
             </div>
           </div>
         )}

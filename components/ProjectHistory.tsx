@@ -1,29 +1,25 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X, Edit2, Save, Upload, ImageIcon } from 'lucide-react';
-import { AppState, IssueType, User, IssueRecord } from '../types';
-import { ISSUE_TYPES } from '../constants';
-import { fetchUsers, updateIssue, uploadPhoto } from '../services/storageService';
+import { Filter, Calendar, Search, Clock, Hash, User as UserIcon, Truck, Trash2, Layers, Box, Eye, X, FileCheck, FileX } from 'lucide-react';
+import { AppState, ProjectType, User, VariationRecord, ProjectSession } from '../types';
+import { PROJECT_TYPES } from '../constants';
+import { fetchUsers } from '../services/storageService';
 
-interface IssueHistoryProps {
+interface ProjectHistoryProps {
   data: AppState;
   currentUser: User;
   onDelete?: (id: string) => void;
-  onUpdate?: () => void; // Callback to refresh data after update
 }
 
-export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, onDelete, onUpdate }) => {
+export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUser, onDelete }) => {
   const [filterNs, setFilterNs] = useState('');
   const [filterType, setFilterType] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
-  // Edit State
-  const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<IssueRecord>>({});
-  const [isUploading, setIsUploading] = useState(false);
+
+  // State for the Variations Modal
+  const [selectedProject, setSelectedProject] = useState<ProjectSession | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -34,24 +30,32 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     load();
   }, []);
 
-  const filteredIssues = useMemo(() => {
-    return data.issues.filter(issue => {
-      const matchNs = issue.projectNs.toLowerCase().includes(filterNs.toLowerCase());
-      const matchType = filterType ? issue.type === filterType : true;
+  const filteredProjects = useMemo(() => {
+    return data.projects.filter(p => {
+      const matchNs = p.ns.toLowerCase().includes(filterNs.toLowerCase());
+      const matchType = filterType ? p.type === filterType : true;
       
       let matchDate = true;
       if (startDate || endDate) {
-        const iDate = new Date(issue.date).getTime();
+        const pDate = new Date(p.startTime).getTime();
         const start = startDate ? new Date(startDate).getTime() : 0;
+        // End of the selected day
         const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Infinity;
-        matchDate = iDate >= start && iDate <= end;
+        matchDate = pDate >= start && pDate <= end;
       }
 
       return matchNs && matchType && matchDate;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [data.issues, filterNs, filterType, startDate, endDate]);
+    }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  }, [data.projects, filterNs, filterType, startDate, endDate]);
+
+  const formatDuration = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
+  };
 
   const formatDate = (isoString: string) => {
+    if (!isoString) return '-';
     return new Date(isoString).toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -61,408 +65,351 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     });
   };
 
-  const isGestor = currentUser.role === 'GESTOR' || currentUser.role === 'GESTOR_QUALIDADE';
-
-  // Edit Handlers
-  const startEditing = (issue: IssueRecord) => {
-    setEditingIssueId(issue.id);
-    setEditForm({ ...issue });
+  const getVariationCounts = (variations: VariationRecord[]) => {
+      if (!variations) return { parts: 0, assemblies: 0 };
+      const parts = variations.filter(v => v.type === 'Peça').length;
+      const assemblies = variations.filter(v => v.type === 'Montagem').length;
+      return { parts, assemblies };
   };
 
-  const cancelEditing = () => {
-    setEditingIssueId(null);
-    setEditForm({});
-  };
-
-  const handleEditChange = (field: keyof IssueRecord, value: any) => {
-    setEditForm(prev => {
-      const updated = { ...prev, [field]: value };
-      
-      // Auto-calculate total cost if relevant fields change
-      if (['timeSpent', 'hourlyRate', 'materialCost', 'peopleInvolved'].includes(field)) {
-        const time = Number(updated.timeSpent || 0);
-        const rate = Number(updated.hourlyRate || 0);
-        const material = Number(updated.materialCost || 0);
-        const people = Number(updated.peopleInvolved || 1);
-        
-        updated.totalCost = ((time / 60) * rate * people) + material;
-      }
-      
-      return updated;
-    });
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setIsUploading(true);
-      const files = Array.from(e.target.files);
-      
-      try {
-        const uploadPromises = files.map((file: File) => uploadPhoto(file));
-        const urls = await Promise.all(uploadPromises);
-        setEditForm(prev => ({
-          ...prev,
-          photos: [...(prev.photos || []), ...urls]
-        }));
-      } catch (error) {
-        alert('Erro ao fazer upload das imagens. Verifique se o bucket "issues-photos" é público e permite uploads.');
-      } finally {
-        setIsUploading(false);
-      }
-    }
-  };
-
-  const removePhoto = (index: number) => {
-    setEditForm(prev => ({
-      ...prev,
-      photos: (prev.photos || []).filter((_, i) => i !== index)
-    }));
-  };
-
-  const [isSaving, setIsSaving] = useState(false);
-
-  const saveEdit = async () => {
-    if (!editForm.id || !editForm.projectNs || !editForm.description) return;
-    
-    setIsSaving(true);
-    try {
-      await updateIssue(editForm as IssueRecord);
-      setEditingIssueId(null);
-      setEditForm({});
-      if (onUpdate) onUpdate();
-    } catch (error: any) {
-      console.error("Error updating issue:", error);
-      if (error.message?.includes('column') || error.message?.includes('does not exist')) {
-          alert('Erro: Colunas ausentes no banco de dados. Por favor, execute o script de atualização SQL no Supabase.');
-      } else {
-          alert(`Erro ao atualizar ocorrência: ${error.message || 'Erro desconhecido'}`);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const isGestor = currentUser.role === 'GESTOR';
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
+      {/* Filters Section */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="flex items-center mb-4 text-gray-700 font-bold">
+          <Filter className="w-5 h-5 mr-2 text-blue-600" />
+          Filtros de Busca
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar erro por NS..."
+              placeholder="Buscar por NS..."
               value={filterNs}
               onChange={(e) => setFilterNs(e.target.value)}
-              className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+              className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
+          
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           >
-            <option value="">Todos os Tipos de Erro</option>
-            {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            <option value="">Todos os Tipos</option>
+            {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-        </div>
-        
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-end border-t pt-4">
-            <span className="text-sm font-medium text-gray-600 flex items-center mb-2 md:mb-0">
-                <Calendar className="w-4 h-4 mr-2" />
-                Filtrar por Data:
-            </span>
-            <div className="flex flex-row gap-4 w-full md:w-auto">
-                <div className="flex items-center gap-2 flex-1 md:flex-none">
-                    <span className="text-xs text-gray-500">De:</span>
-                    <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm w-full"
-                    />
-                </div>
-                <div className="flex items-center gap-2 flex-1 md:flex-none">
-                    <span className="text-xs text-gray-500">Até:</span>
-                    <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm w-full"
-                    />
-                </div>
-            </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">De:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Até:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+            />
+          </div>
         </div>
       </div>
 
-      {/* List */}
-      <div className="space-y-4">
-        {filteredIssues.length > 0 ? (
-          filteredIssues.map((issue) => (
-            <div key={issue.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group">
-              
-              {/* Actions */}
-              {isGestor && editingIssueId !== issue.id && (
-                <div className="absolute top-4 right-4 flex gap-2 z-10">
-                  <button 
-                    onClick={() => startEditing(issue)}
-                    className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                    title="Editar"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => onDelete && onDelete(issue.id)}
-                    className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                    title="Excluir"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              {editingIssueId === issue.id ? (
-                // EDIT MODE
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Editar Ocorrência</h3>
-                    <button onClick={cancelEditing} className="text-gray-400 hover:text-gray-600">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">NS do Projeto</label>
-                      <input
-                        type="text"
-                        value={editForm.projectNs || ''}
-                        onChange={(e) => handleEditChange('projectNs', e.target.value)}
-                        className="w-full p-2 border rounded-lg text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Tipo de Erro</label>
-                      <select
-                        value={editForm.type || ''}
-                        onChange={(e) => handleEditChange('type', e.target.value)}
-                        className="w-full p-2 border rounded-lg text-sm"
-                      >
-                        {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Descrição</label>
-                      <textarea
-                        value={editForm.description || ''}
-                        onChange={(e) => handleEditChange('description', e.target.value)}
-                        className="w-full p-2 border rounded-lg text-sm h-24"
-                      />
-                    </div>
-                    
-                    {/* Cost Fields */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Tempo Gasto (min)</label>
-                      <input
-                        type="number"
-                        value={editForm.timeSpent || 0}
-                        onChange={(e) => handleEditChange('timeSpent', Number(e.target.value))}
-                        className="w-full p-2 border rounded-lg text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Custo Hora (R$)</label>
-                      <input
-                        type="number"
-                        value={editForm.hourlyRate || 0}
-                        onChange={(e) => handleEditChange('hourlyRate', Number(e.target.value))}
-                        className="w-full p-2 border rounded-lg text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Pessoas Envolvidas</label>
-                      <input
-                        type="number"
-                        value={editForm.peopleInvolved || 1}
-                        onChange={(e) => handleEditChange('peopleInvolved', Number(e.target.value))}
-                        className="w-full p-2 border rounded-lg text-sm"
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Custo Material (R$)</label>
-                      <input
-                        type="number"
-                        value={editForm.materialCost || 0}
-                        onChange={(e) => handleEditChange('materialCost', Number(e.target.value))}
-                        className="w-full p-2 border rounded-lg text-sm"
-                      />
-                    </div>
-                    <div className="col-span-2 bg-gray-50 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-600">Custo Total Calculado:</span>
-                        <span className="text-lg font-bold text-red-600">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(editForm.totalCost || 0)}
+      {/* Results Table / Cards */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+              <tr>
+                <th className="p-4">Status</th>
+                <th className="p-4">Projetista</th>
+                <th className="p-4">Cliente</th>
+                <th className="p-4">NS / Cód.</th>
+                <th className="p-4">Variações (Total)</th>
+                <th className="p-4">Tipo / Impl.</th>
+                <th className="p-4">Início / Fim</th>
+                <th className="p-4">Duração</th>
+                {isGestor && <th className="p-4 text-center">Ações</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredProjects.map((project) => {
+                const { parts, assemblies } = getVariationCounts(project.variations);
+                const totalVariations = (project.variations || []).length;
+                
+                return (
+                <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      project.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {project.status === 'COMPLETED' ? 'Concluído' : 'Em And.'}
+                    </span>
+                  </td>
+                  
+                  {/* Projetista */}
+                  <td className="p-4">
+                    <div className="flex items-center text-gray-700 font-medium">
+                        <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs mr-2 font-bold border border-blue-100">
+                        {(usersMap[project.userId || ''] || '?').charAt(0)}
+                        </div>
+                        <span className="truncate max-w-[120px]" title={usersMap[project.userId || '']}>
+                            {usersMap[project.userId || ''] || 'Desconhecido'}
                         </span>
                     </div>
+                  </td>
 
-                    {/* Photos Upload */}
-                    <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-500 mb-2">Evidências (Fotos)</label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {editForm.photos?.map((photo, idx) => (
-                                <div key={idx} className="relative group">
-                                    <img src={photo} alt="preview" className="w-16 h-16 object-cover rounded-lg border" />
-                                    <button
-                                        type="button"
-                                        onClick={() => removePhoto(idx)}
-                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
+                  {/* Cliente */}
+                  <td className="p-4 text-gray-600 font-medium truncate max-w-[150px]" title={project.clientName}>
+                    {project.clientName || '-'}
+                  </td>
+
+                  {/* NS e Código */}
+                  <td className="p-4">
+                     <div className="font-mono font-bold text-gray-800">{project.ns}</div>
+                     {project.projectCode && (
+                         <div className="text-xs text-blue-600 font-mono mt-0.5">{project.projectCode}</div>
+                     )}
+                  </td>
+
+                  {/* Variações Count Simplificado + Botão */}
+                  <td className="p-4">
+                    {totalVariations === 0 ? (
+                        <span className="text-gray-400 text-xs">-</span>
+                    ) : (
+                        <div>
+                            <div className="text-sm font-bold text-gray-800 flex items-center">
+                                {totalVariations} <span className="text-xs font-normal text-gray-500 ml-1">Cód. Criados</span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                                <div className="text-[10px] text-gray-500 flex items-center gap-2">
+                                    <span className={parts > 0 ? "text-blue-600 font-medium" : ""}>{parts} Pç</span>
+                                    <span className="text-gray-300">|</span>
+                                    <span className={assemblies > 0 ? "text-orange-600 font-medium" : ""}>{assemblies} Mont</span>
                                 </div>
-                            ))}
-                            <label className="w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                                <Upload className="w-5 h-5 text-gray-400" />
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    multiple 
-                                    className="hidden" 
-                                    onChange={handleFileChange}
-                                    disabled={isUploading}
-                                />
-                            </label>
+                                <button 
+                                    onClick={() => setSelectedProject(project)}
+                                    className="ml-2 p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title="Ver lista de variações"
+                                >
+                                    <Eye className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                  </div>
+                    )}
+                  </td>
 
-                  <div className="flex justify-end gap-2 mt-4">
-                    <button
-                      onClick={cancelEditing}
-                      className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={saveEdit}
-                      disabled={isSaving}
-                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSaving ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Salvando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          Salvar Alterações
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // VIEW MODE
-                <>
-                  <div className={`flex flex-col sm:flex-row justify-between items-start mb-2 relative ${isGestor ? 'pr-20' : ''}`}>
-                    <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-0">
-                      <span className={`px-2 py-1 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-100`}>
-                        {issue.type}
-                      </span>
-                      <span className="font-mono font-bold text-gray-800 text-sm">NS: {issue.projectNs}</span>
+                  {/* Tipo e Implemento */}
+                  <td className="p-4">
+                     <div className="text-xs font-bold text-gray-700">{project.type}</div>
+                     <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <Truck className="w-3 h-3 mr-1" />
+                      {project.implementType || '-'}
                     </div>
-                    <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-1 w-full sm:w-auto justify-between sm:justify-start">
-                      <div className="flex items-center text-xs text-gray-400">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {formatDate(issue.date)}
-                      </div>
-                      {isGestor && issue.reportedBy && (
-                        <div className="flex items-center text-xs text-gray-500 font-medium">
-                          <UserIcon className="w-3 h-3 mr-1" />
-                          {usersMap[issue.reportedBy] || 'Desconhecido'}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">O que aconteceu:</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
-                      {issue.description}
-                    </p>
-                  </div>
-                  
-                  {/* Cost Details */}
-                  {(issue.totalCost > 0 || issue.timeSpent > 0 || issue.materialCost > 0 || (issue.peopleInvolved && issue.peopleInvolved > 1)) && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-4 text-xs">
-                        <div className="flex flex-col">
-                            <span className="text-gray-400">Tempo Gasto</span>
-                            <span className="font-semibold text-gray-700">{issue.timeSpent || 0} min</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-gray-400">Pessoas</span>
-                            <span className="font-semibold text-gray-700">{issue.peopleInvolved || 1}</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-gray-400">Custo Material</span>
-                            <span className="font-semibold text-gray-700">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(issue.materialCost || 0)}
-                            </span>
-                        </div>
-                        <div className="flex flex-col ml-auto text-right">
-                            <span className="text-gray-400">Custo Total</span>
-                            <span className="font-bold text-red-600 text-sm">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(issue.totalCost || 0)}
-                            </span>
-                        </div>
-                    </div>
-                  )}
+                  </td>
 
-                  {/* Photos */}
-                  {issue.photos && issue.photos.length > 0 && (
-                    <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
-                      {issue.photos.map((photo, idx) => (
-                        <img 
-                          key={idx} 
-                          src={photo} 
-                          alt={`Evidência ${idx + 1}`} 
-                          className="w-16 h-16 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => setSelectedImage(photo)}
-                        />
-                      ))}
+                  {/* Datas */}
+                  <td className="p-4 text-xs text-gray-500">
+                      <div><span className="font-semibold">I:</span> {formatDate(project.startTime)}</div>
+                      {project.endTime && <div><span className="font-semibold">F:</span> {formatDate(project.endTime)}</div>}
+                  </td>
+
+                  <td className="p-4 font-medium text-gray-800">
+                    <div className="flex items-center">
+                        <Clock className="w-4 h-4 mr-1 text-gray-400" />
+                        {formatDuration(project.totalActiveSeconds)}
                     </div>
+                  </td>
+
+                  {isGestor && (
+                    <td className="p-4 text-center">
+                      <button 
+                        onClick={() => onDelete && onDelete(project.id)}
+                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded transition"
+                        title="Excluir Projeto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   )}
-                </>
+                </tr>
+              )})}
+              {filteredProjects.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="p-12 text-center text-gray-400">
+                    Nenhum projeto encontrado com os filtros selecionados.
+                  </td>
+                </tr>
               )}
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-            <AlertTriangle className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-            <p className="text-gray-500">Nenhum problema encontrado com os filtros atuais.</p>
-          </div>
-        )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4 p-4 bg-gray-50">
+          {filteredProjects.map((project) => {
+             const { parts, assemblies } = getVariationCounts(project.variations);
+             const totalVariations = (project.variations || []).length;
+             return (
+              <div key={project.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex justify-between items-start mb-3">
+                   <div>
+                      <div className="font-mono font-bold text-lg text-gray-800">{project.ns}</div>
+                      <div className="text-xs text-gray-500 font-medium">{project.clientName || 'Cliente N/A'}</div>
+                   </div>
+                   <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                      project.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {project.status === 'COMPLETED' ? 'Concluído' : 'Em And.'}
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                   <div>
+                      <span className="text-xs text-gray-400 block">Tipo</span>
+                      <span className="font-medium text-gray-700">{project.type}</span>
+                   </div>
+                   <div>
+                      <span className="text-xs text-gray-400 block">Implemento</span>
+                      <span className="font-medium text-gray-700 flex items-center">
+                        <Truck className="w-3 h-3 mr-1" /> {project.implementType || '-'}
+                      </span>
+                   </div>
+                   <div>
+                      <span className="text-xs text-gray-400 block">Projetista</span>
+                      <span className="font-medium text-gray-700">{usersMap[project.userId || ''] || 'Desconhecido'}</span>
+                   </div>
+                   <div>
+                      <span className="text-xs text-gray-400 block">Duração</span>
+                      <span className="font-medium text-gray-700 flex items-center">
+                         <Clock className="w-3 h-3 mr-1" /> {formatDuration(project.totalActiveSeconds)}
+                      </span>
+                   </div>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                   <div className="text-xs">
+                      {totalVariations > 0 ? (
+                        <div className="flex items-center gap-2">
+                           <span className="font-bold text-gray-700">{totalVariations} Variações</span>
+                           <span className="text-gray-400">({parts} Pç, {assemblies} Mont)</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Sem variações</span>
+                      )}
+                   </div>
+                   <div className="flex gap-2">
+                      {totalVariations > 0 && (
+                        <button 
+                            onClick={() => setSelectedProject(project)}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg"
+                        >
+                            <Eye className="w-4 h-4" />
+                        </button>
+                      )}
+                      {isGestor && (
+                        <button 
+                            onClick={() => onDelete && onDelete(project.id)}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                   </div>
+                </div>
+              </div>
+             );
+          })}
+           {filteredProjects.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                Nenhum projeto encontrado.
+              </div>
+           )}
+        </div>
       </div>
 
-      {/* Image Modal */}
-      {selectedImage && (
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-            onClick={() => setSelectedImage(null)}
-        >
-            <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
-                <button 
-                    onClick={() => setSelectedImage(null)}
-                    className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2"
-                >
-                    <X className="w-8 h-8" />
-                </button>
-                <img 
-                    src={selectedImage} 
-                    alt="Evidência Ampliada" 
-                    className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-                    onClick={(e) => e.stopPropagation()} 
-                />
+      {/* Variations Modal */}
+      {selectedProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-800">Detalhes das Variações</h3>
+                        <p className="text-sm text-gray-500">NS: <span className="font-mono font-bold text-gray-700">{selectedProject.ns}</span> • Cliente: {selectedProject.clientName || 'N/A'}</p>
+                    </div>
+                    <button 
+                        onClick={() => setSelectedProject(null)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                
+                <div className="p-0 overflow-y-auto flex-1">
+                    <table className="w-full text-sm text-left">
+                         <thead className="bg-white text-gray-600 font-semibold border-b border-gray-200 sticky top-0 shadow-sm">
+                             <tr>
+                                 <th className="p-4">Código Antigo</th>
+                                 <th className="p-4">Descrição</th>
+                                 <th className="p-4">Código Novo</th>
+                                 <th className="p-4">Tipo</th>
+                                 <th className="p-4 text-center">Arquivos</th>
+                             </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-100">
+                             {selectedProject.variations.map((v) => (
+                                 <tr key={v.id} className="hover:bg-gray-50">
+                                     <td className="p-4 font-mono text-gray-500">{v.oldCode || '-'}</td>
+                                     <td className="p-4 text-gray-800 font-medium">{v.description}</td>
+                                     <td className="p-4 font-mono text-blue-600 font-bold">{v.newCode || '-'}</td>
+                                     <td className="p-4">
+                                         <span className={`px-2 py-0.5 rounded text-xs ${v.type === 'Montagem' ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-700'}`}>
+                                             {v.type}
+                                         </span>
+                                     </td>
+                                     <td className="p-4 text-center">
+                                        {v.filesGenerated ? (
+                                            <span className="inline-flex items-center text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100">
+                                                <FileCheck className="w-3 h-3 mr-1" /> OK
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center text-xs font-bold text-red-400 bg-red-50 px-2 py-1 rounded border border-red-100">
+                                                <FileX className="w-3 h-3 mr-1" /> Pendente
+                                            </span>
+                                        )}
+                                     </td>
+                                 </tr>
+                             ))}
+                             {selectedProject.variations.length === 0 && (
+                                 <tr>
+                                     <td colSpan={5} className="p-8 text-center text-gray-400 italic">
+                                         Nenhuma variação registrada neste projeto.
+                                     </td>
+                                 </tr>
+                             )}
+                         </tbody>
+                    </table>
+                </div>
+
+                <div className="p-4 border-t border-gray-100 bg-gray-50 text-right">
+                    <button 
+                        onClick={() => setSelectedProject(null)}
+                        className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium transition-colors"
+                    >
+                        Fechar
+                    </button>
+                </div>
             </div>
         </div>
       )}

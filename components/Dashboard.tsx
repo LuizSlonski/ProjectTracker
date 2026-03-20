@@ -25,7 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const isRestrictedRole = currentUser.role === 'QUALIDADE' || currentUser.role === 'PROCESSOS';
+  const isRestrictedRole = currentUser.role === 'QUALIDADE' || currentUser.role === 'GESTOR_QUALIDADE' || currentUser.role === 'PROCESSOS' || currentUser.role === 'CEO';
 
   useEffect(() => {
     // Load users for the manager chart
