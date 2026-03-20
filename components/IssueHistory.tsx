@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X, Edit2, Save, Upload, ImageIcon } from 'lucide-react';
 import { AppState, IssueType, User, IssueRecord } from '../types';
 import { ISSUE_TYPES } from '../constants';
-import { fetchUsers, updateIssue, uploadPhoto } from '../services/storageService';
+import { fetchUsers, updateIssue, uploadPhoto, deletePhotoFromBucket } from '../services/storageService';
 
 interface IssueHistoryProps {
   data: AppState;
@@ -126,6 +126,25 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     
     setIsSaving(true);
     try {
+      // Find original issue to compare photos
+      const originalIssue = data.issues.find(i => i.id === editForm.id);
+      if (originalIssue && originalIssue.photos) {
+        // Find photos that were in the original issue but are no longer in the editForm
+        const removedPhotos = originalIssue.photos.filter(p => !editForm.photos?.includes(p));
+        
+        // Delete removed photos from the bucket
+        if (removedPhotos.length > 0) {
+          const deletePromises = removedPhotos.map(photoUrl => {
+            // Only try to delete if it's a valid URL (not a base64 string from old data)
+            if (photoUrl.startsWith('http')) {
+              return deletePhotoFromBucket(photoUrl);
+            }
+            return Promise.resolve();
+          });
+          await Promise.all(deletePromises);
+        }
+      }
+
       await updateIssue(editForm as IssueRecord);
       setEditingIssueId(null);
       setEditForm({});

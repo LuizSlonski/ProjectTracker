@@ -223,12 +223,60 @@ export const updateIssue = async (issue: IssueRecord): Promise<AppState> => {
 
 export const deleteIssue = async (id: string): Promise<AppState> => {
   try {
-    const { error } = await supabase.from('issues').delete().eq('id', id);
-    if (error) throw error;
+    // 1. Buscar a ocorrência para pegar as URLs das fotos
+    const { data: issueData, error: fetchError } = await supabase
+      .from('issues')
+      .select('photos')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // 2. Deletar a ocorrência do banco de dados
+    const { error: deleteError } = await supabase.from('issues').delete().eq('id', id);
+    if (deleteError) throw deleteError;
+
+    // 3. Deletar as fotos do bucket (se existirem)
+    if (issueData?.photos && issueData.photos.length > 0) {
+      const filePaths = issueData.photos.map((url: string) => {
+        // Extrai o nome do arquivo da URL
+        const parts = url.split('/');
+        return parts[parts.length - 1];
+      }).filter(Boolean);
+
+      if (filePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from('issues-photos')
+          .remove(filePaths);
+          
+        if (storageError) {
+          console.error("Failed to delete photos from bucket", storageError);
+        }
+      }
+    }
+
     return fetchAppState();
   } catch (error) {
     console.error("Failed to delete issue", error);
     throw error;
+  }
+};
+
+export const deletePhotoFromBucket = async (photoUrl: string): Promise<void> => {
+  try {
+    // Extrai o nome do arquivo da URL
+    const parts = photoUrl.split('/');
+    const fileName = parts[parts.length - 1];
+    
+    if (!fileName) return;
+
+    const { error } = await supabase.storage
+      .from('issues-photos')
+      .remove([fileName]);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Failed to delete photo from bucket", error);
   }
 };
 
