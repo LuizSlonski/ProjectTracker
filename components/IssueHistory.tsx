@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X, Edit2, Save, Upload, ImageIcon } from 'lucide-react';
 import { AppState, IssueType, User, IssueRecord } from '../types';
 import { ISSUE_TYPES } from '../constants';
-import { fetchUsers, updateIssue } from '../services/storageService';
+import { fetchUsers, updateIssue, uploadPhoto } from '../services/storageService';
 
 interface IssueHistoryProps {
   data: AppState;
@@ -92,28 +92,23 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setIsUploading(true);
       const files = Array.from(e.target.files);
       
-      const readers = files.map((file: any) => {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-
-      Promise.all(readers).then(results => {
+      try {
+        const uploadPromises = files.map((file: File) => uploadPhoto(file));
+        const urls = await Promise.all(uploadPromises);
         setEditForm(prev => ({
           ...prev,
-          photos: [...(prev.photos || []), ...results]
+          photos: [...(prev.photos || []), ...urls]
         }));
+      } catch (error) {
+        alert('Erro ao fazer upload das imagens. Verifique se o bucket "issues-photos" é público e permite uploads.');
+      } finally {
         setIsUploading(false);
-      });
+      }
     }
   };
 
