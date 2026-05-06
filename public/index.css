@@ -98,6 +98,19 @@ body {
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
+/* ── Main content responsive padding ── */
+.main-content {
+  padding: 1.5rem;
+  padding-top: 4.5rem;   /* mobile: clear top header */
+  padding-bottom: 5.5rem; /* mobile: clear bottom nav */
+}
+@media (min-width: 768px) {
+  .main-content {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+}
+
 /* ── Mobile bottom nav ── */
 .mobile-bottom-nav {
   position: fixed;

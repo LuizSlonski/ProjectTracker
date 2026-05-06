@@ -384,10 +384,9 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main
-        className="flex-1 md:ml-64 min-h-screen"
-        style={{ background: '#020617', padding: '1.5rem', paddingTop: '4.5rem', paddingBottom: '5.5rem' }}
+        className="main-content flex-1 md:ml-64 min-h-screen"
+        style={{ background: '#020617' }}
       >
-        <style>{`@media (min-width: 768px) { .flex-1.md\\:ml-64.min-h-screen { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; } }`}</style>
         {isLoading && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(2,6,23,0.8)', backdropFilter: 'blur(12px)' }}>
             <div style={{ background: 'rgba(10,18,35,0.95)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
