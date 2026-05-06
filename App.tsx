@@ -21,7 +21,8 @@ import {
   deleteInnovation
 } from './services/storageService';
 import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
-const COMPANY_LOGO_URL = '/logo.svg';
+import logoImg from './src/assets/logo.png';
+const COMPANY_LOGO_URL = logoImg;
 
 const App: React.FC = () => {
   // Auth State
