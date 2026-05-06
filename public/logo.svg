@@ -1,0 +1,8 @@
+<svg viewBox="0 0 100 116" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main right-pointing triangle -->
+  <polygon points="0,0 100,58 0,116" fill="#f97316"/>
+  <!-- White dividing line -->
+  <line x1="0" y1="72" x2="100" y2="58" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Lower accent triangle -->
+  <polygon points="0,72 100,58 0,116" fill="#fbbf24" opacity="0.85"/>
+</svg>
