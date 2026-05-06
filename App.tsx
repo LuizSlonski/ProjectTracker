@@ -384,7 +384,7 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main
-        className="main-content flex-1 md:ml-64 min-h-screen"
+        className="flex-1 md:ml-64 min-h-screen p-6 pt-20 pb-24 md:pt-6 md:pb-6"
         style={{ background: '#020617' }}
       >
         {isLoading && (
