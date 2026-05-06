@@ -1,0 +1,531 @@
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb, Shield, Activity, Eye } from 'lucide-react';
+import { ProjectTracker } from './components/ProjectTracker';
+import { IssueReporter } from './components/IssueReporter';
+import { IssueHistory } from './components/IssueHistory';
+import { Dashboard } from './components/Dashboard';
+import { ProjectHistory } from './components/ProjectHistory';
+import { UserManagement } from './components/UserManagement';
+import InnovationManager from './components/InnovationManager';
+import { Login } from './components/Login';
+import { 
+  fetchAppState, 
+  addProject, 
+  updateProject, 
+  deleteProject,
+  addIssue, 
+  deleteIssue,
+  addInnovation, 
+  updateInnovationStatus,
+  deleteInnovation
+} from './services/storageService';
+import { AppState, ProjectSession, IssueRecord, User, InnovationRecord } from './types';
+import logoImg from './src/assets/logo.png'; 
+
+const COMPANY_LOGO_URL = logoImg;
+
+const App: React.FC = () => {
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // App State
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracker' | 'issues' | 'history' | 'team' | 'innovations'>('tracker');
+  const [issueTab, setIssueTab] = useState<'new' | 'history'>('new');
+  const [data, setData] = useState<AppState>({ projects: [], issues: [], innovations: [] });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load data when user logs in or mounts
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      const appData = await fetchAppState();
+      setData(appData);
+      setIsLoading(false);
+    };
+    load();
+  }, [currentUser]); 
+
+  // Auto-redirect based on role logic
+  useEffect(() => {
+      if (currentUser) {
+          if (currentUser.role === 'QUALIDADE' || currentUser.role === 'GESTOR_QUALIDADE') {
+              setActiveTab('issues');
+          } else if (currentUser.role === 'PROCESSOS') {
+              setActiveTab('innovations');
+          } else if (currentUser.role === 'CEO') {
+              setActiveTab('dashboard'); // CEO defaults to dashboard
+          } else {
+              // GESTOR, PROJETISTA default to tracker
+              setActiveTab('tracker');
+          }
+      }
+  }, [currentUser]);
+
+  // --- PERMISSIONS LOGIC ---
+  
+  // Who can see ALL project history?
+  const canSeeAllHistory = useMemo(() => {
+      if (!currentUser) return false;
+      return ['GESTOR', 'CEO'].includes(currentUser.role);
+  }, [currentUser]);
+
+  const canUseTracker = useMemo(() => {
+      if (!currentUser) return false;
+      // Quality, Process CANNOT use tracker or see history, but CEO can see everything
+      return ['PROJETISTA', 'GESTOR', 'CEO'].includes(currentUser.role);
+  }, [currentUser]);
+
+  // Who can manage Innovations? 
+  const canSeeInnovations = useMemo(() => {
+      if (!currentUser) return false;
+      return ['GESTOR', 'PROCESSOS', 'PROJETISTA', 'CEO'].includes(currentUser.role);
+  }, [currentUser]);
+  
+  // Who can see Dashboard? (Everyone)
+  // Who can see Team? (Manager, CEO)
+
+  // Filter Data based on User Role
+  const displayData = useMemo(() => {
+    if (!currentUser) return { projects: [], issues: [], innovations: [] };
+
+    const role = currentUser.role;
+
+    // "Super Viewers" - See everything in DB
+    if (['GESTOR', 'PROCESSOS', 'CEO'].includes(role)) {
+      return data;
+    }
+
+    // QUALITY - Sees all Issues (to analyze), All Projects (for context in charts), No Innovations
+    if (role === 'QUALIDADE' || role === 'GESTOR_QUALIDADE') {
+        return {
+            projects: data.projects, // Needed for charts context
+            issues: data.issues,
+            innovations: [] // Not relevant
+        };
+    }
+
+    // PROJETISTA - Sees own data + All Innovations (usually shared knowledge)
+    return {
+      projects: data.projects.filter(p => p.userId === currentUser.id),
+      issues: data.issues.filter(i => i.reportedBy === currentUser.id),
+      innovations: data.innovations
+    };
+  }, [data, currentUser]);
+
+  // --- HANDLERS ---
+
+  const handleProjectCreate = async (project: ProjectSession) => {
+    const projectWithUser = { ...project, userId: currentUser?.id };
+    setData(prev => ({
+      ...prev,
+      projects: [projectWithUser, ...prev.projects]
+    }));
+    try {
+      const updatedData = await addProject(projectWithUser);
+      setData(updatedData);
+    } catch (e) {
+      alert("Erro ao criar projeto.");
+    }
+  };
+
+  const handleProjectUpdate = async (project: ProjectSession) => {
+    setData(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === project.id ? project : p)
+    }));
+    try {
+        const updatedData = await updateProject(project);
+        setData(updatedData);
+        if (project.status === 'COMPLETED') {
+             // Optional alert
+        }
+    } catch (e) {
+        alert("Erro ao atualizar projeto.");
+    }
+  };
+
+  const handleProjectDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja apagar este projeto? Essa ação não pode ser desfeita.")) return;
+    
+    setIsLoading(true);
+    try {
+      const updatedData = await deleteProject(id);
+      setData(updatedData);
+    } catch (e) {
+      alert("Erro ao apagar projeto.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleIssueReport = async (issue: IssueRecord) => {
+    setIsLoading(true);
+    const issueWithUser = { ...issue, reportedBy: currentUser?.id };
+     setData(prev => ({
+      ...prev,
+      issues: [issueWithUser, ...prev.issues]
+    }));
+    try {
+      const updatedData = await addIssue(issueWithUser);
+      setData(updatedData);
+      alert('Problema registrado com sucesso.');
+      setIssueTab('history');
+    } catch (e) {
+      // Re-throw to let child component handle specific error messages
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleIssueDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja apagar esta ocorrência?")) return;
+    setIsLoading(true);
+    try {
+      const updatedData = await deleteIssue(id);
+      setData(updatedData);
+    } catch (e) {
+      alert("Erro ao apagar ocorrência.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleIssueUpdate = async () => {
+    setIsLoading(true);
+    try {
+      const updatedData = await fetchAppState();
+      setData(updatedData);
+    } catch (e) {
+      console.error("Failed to refresh data after update", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInnovationAdd = async (innovation: InnovationRecord) => {
+    setIsLoading(true);
+    // Optimistic Update
+    setData(prev => ({
+      ...prev,
+      innovations: [innovation, ...prev.innovations]
+    }));
+
+    try {
+      const updatedData = await addInnovation(innovation);
+      setData(updatedData);
+      alert('Inovação registrada com sucesso!');
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao salvar inovação.");
+      const revertedData = await fetchAppState();
+      setData(revertedData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInnovationStatusChange = async (id: string, status: string) => {
+    setIsLoading(true);
+    try {
+        const updatedData = await updateInnovationStatus(id, status);
+        setData(updatedData);
+    } catch(e) {
+        alert("Erro ao atualizar status.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleInnovationDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir esta inovação?")) return;
+    setIsLoading(true);
+    try {
+      const updatedData = await deleteInnovation(id);
+      setData(updatedData);
+    } catch (e) {
+      alert("Erro ao excluir inovação.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    // Reset to tracker but effective login will handle redirection
+    setActiveTab('tracker');
+  };
+
+  if (!currentUser) {
+    return <Login onLogin={setCurrentUser} />;
+  }
+
+  const NavItem = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => (
+    <button
+      onClick={() => {
+        setActiveTab(id);
+        setIsMobileMenuOpen(false);
+      }}
+      className={`flex items-center w-full px-6 py-4 text-left transition-colors border-r-4 ${
+        activeTab === id 
+          ? 'bg-slate-800 border-blue-500 text-blue-400 font-medium' 
+          : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+      }`}
+    >
+      <Icon className={`w-5 h-5 mr-3 ${activeTab === id ? 'text-blue-400' : 'text-slate-500'}`} />
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar for Desktop */}
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 fixed h-full z-10 text-white shadow-xl">
+        <div className="p-6 border-b border-slate-800">
+          <div className="mb-6 flex items-center gap-3">
+             <img 
+               src={COMPANY_LOGO_URL}
+               alt="Logo" 
+               className="h-10 w-auto max-w-[50px] object-contain" 
+             />
+             <div className="flex flex-col">
+                <span className="text-2xl font-bold text-white leading-none tracking-tight">
+                  Quality<span className="text-blue-500">Tracker</span>
+                </span>
+             </div>
+          </div>
+          
+          <div className="flex items-center text-slate-500 text-xs mb-1 uppercase tracking-wider font-semibold">
+            Painel de Controle
+          </div>
+          <p className="text-sm font-medium text-slate-200 truncate">{currentUser.name}</p>
+          <div className="flex items-center mt-2 gap-2">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full inline-block">
+                {currentUser.role}
+            </span>
+          </div>
+        </div>
+        <nav className="flex-1 mt-6 overflow-y-auto">
+          {canUseTracker && (
+             <NavItem id="tracker" label="Projetar" icon={PenTool} />
+          )}
+          
+          {canUseTracker && (
+            <NavItem id="history" label="Histórico" icon={History} />
+          )}
+
+          <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
+          <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
+          
+          {canSeeInnovations && (
+             <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
+          )}
+          
+          {['GESTOR', 'CEO'].includes(currentUser.role) && (
+            <NavItem id="team" label="Gestão de Equipe" icon={Users} />
+          )}
+        </nav>
+        <div className="p-6 border-t border-slate-800 bg-slate-900">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center text-sm text-red-400 hover:text-red-300 hover:bg-slate-800/50 p-2 rounded-lg font-medium transition-colors w-full mb-4"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair da Conta
+          </button>
+          <div className="text-center text-xs text-slate-600 font-bold">
+            <span className="text-blue-500 text-sm">JIMP</span><span className="text-orange-500 text-sm">NEXUS</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 w-full bg-slate-900 border-b border-slate-800 z-20 flex justify-between items-center p-4 shadow-md">
+        <div className="h-8 flex items-center gap-2">
+            <img 
+                src={COMPANY_LOGO_URL} 
+                alt="Logo" 
+                className="h-full w-auto object-contain"
+            />
+            <span className="text-lg font-bold text-white">
+                Quality<span className="text-blue-500">Tracker</span>
+            </span>
+        </div>
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-300 hover:text-white transition-colors">
+          {isMobileMenuOpen ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-slate-900 z-10 pt-20 md:hidden animate-in slide-in-from-right duration-200">
+          <nav className="flex flex-col h-full overflow-y-auto">
+            {canUseTracker && (
+                <NavItem id="tracker" label="Projetar" icon={PenTool} />
+            )}
+            {canUseTracker && (
+                <NavItem id="history" label="Histórico" icon={History} />
+            )}
+            <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
+            <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
+            {canSeeInnovations && (
+                <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
+            )}
+            {['GESTOR', 'CEO'].includes(currentUser.role) && (
+               <NavItem id="team" label="Gestão de Equipe" icon={Users} />
+            )}
+            <div className="mt-auto p-6 border-t border-slate-800">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center w-full px-4 py-3 text-left text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <LogOut className="w-5 h-5 mr-3" />
+                Sair
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 md:ml-64 p-6 pt-24 md:pt-6 transition-all bg-gray-50 min-h-screen">
+        {isLoading && (
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-md transition-all duration-300">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-300 transform scale-100">
+              <div className="relative mb-6">
+                <div className="w-16 h-16 border-4 border-blue-100 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce"></div>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-gray-800 tracking-tight">Quality<span className="text-blue-600">Tracker</span></span>
+              <span className="text-sm text-gray-500 mt-2 font-medium animate-pulse">Processando informações...</span>
+            </div>
+          </div>
+        )}
+        <div className="max-w-5xl mx-auto">
+          {/* Tracker Tab */}
+          <div className={activeTab === 'tracker' && canUseTracker ? 'block space-y-6' : 'hidden'}>
+            <div className="mb-6 flex justify-between items-end">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Área de Projeto</h2>
+                <p className="text-gray-500">Bem-vindo, <span className="font-semibold text-blue-600">{currentUser.name}</span></p>
+              </div>
+            </div>
+            <ProjectTracker 
+              existingProjects={displayData.projects}
+              onCreate={handleProjectCreate}
+              onUpdate={handleProjectUpdate}
+              isVisible={activeTab === 'tracker'}
+              onNavigateBack={() => setActiveTab('tracker')}
+            />
+          </div>
+
+          {activeTab === 'history' && canUseTracker && (
+            <div className="space-y-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Histórico de Liberações</h2>
+                <p className="text-gray-500">
+                  {canSeeAllHistory
+                    ? "Visão geral de todas as liberações da equipe." 
+                    : "Consulte suas liberações passadas."}
+                </p>
+              </div>
+              <ProjectHistory 
+                data={displayData} 
+                currentUser={currentUser} 
+                onDelete={handleProjectDelete}
+              />
+            </div>
+          )}
+
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+               <div className="mb-6 flex items-center gap-4">
+                 <div className="bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-800">
+                    <img 
+                      src={COMPANY_LOGO_URL}
+                      alt="Logo" 
+                      className="h-12 w-auto object-contain" 
+                    />
+                 </div>
+                 <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Painel de Desempenho</h2>
+                    <p className="text-gray-500">
+                      {canSeeAllHistory ? "Indicadores globais da equipe." : "Seus indicadores de produtividade."}
+                    </p>
+                 </div>
+              </div>
+              <Dashboard data={displayData} currentUser={currentUser} />
+            </div>
+          )}
+
+          {activeTab === 'issues' && (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                   <h2 className="text-2xl font-bold text-gray-800">Gestão de Qualidade</h2>
+                   <p className="text-gray-500">Reporte e analise os problemas ocorridos.</p>
+                </div>
+                <div className="bg-gray-200 p-1 rounded-lg inline-flex">
+                  <button 
+                    onClick={() => setIssueTab('new')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      issueTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Novo Registro
+                  </button>
+                  <button 
+                    onClick={() => setIssueTab('history')}
+                     className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      issueTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Histórico de Problemas
+                  </button>
+                </div>
+              </div>
+
+              {issueTab === 'new' ? (
+                <IssueReporter onReport={handleIssueReport} />
+              ) : (
+                <IssueHistory 
+                  data={displayData} 
+                  currentUser={currentUser} 
+                  onDelete={handleIssueDelete}
+                  onUpdate={handleIssueUpdate}
+                />
+              )}
+            </div>
+          )}
+
+          {activeTab === 'innovations' && canSeeInnovations && (
+             <InnovationManager 
+                innovations={displayData.innovations} 
+                onAdd={handleInnovationAdd}
+                onStatusChange={handleInnovationStatusChange}
+                onDelete={handleInnovationDelete}
+                currentUser={currentUser}
+             />
+          )}
+
+          {activeTab === 'team' && ['GESTOR', 'CEO'].includes(currentUser.role) && (
+             <div className="space-y-6">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">Gestão de Equipe</h2>
+                  <p className="text-gray-500">Adicione novos membros e gerencie permissões de acesso.</p>
+                </div>
+                <UserManagement />
+             </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default App;
