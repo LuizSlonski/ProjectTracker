@@ -25,6 +25,14 @@ import logoImg from './src/assets/logo.png';
 const COMPANY_LOGO_URL = logoImg;
 
 const App: React.FC = () => {
+  // Responsive padding
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -384,8 +392,13 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main
-        className="flex-1 md:ml-64 min-h-screen p-6 pt-20 pb-24 md:pt-6 md:pb-6"
-        style={{ background: '#020617' }}
+        className="flex-1 md:ml-64 min-h-screen"
+        style={{
+          background: '#020617',
+          padding: '1.5rem',
+          paddingTop: isDesktop ? '1.5rem' : '4.5rem',
+          paddingBottom: isDesktop ? '1.5rem' : '5.5rem',
+        }}
       >
         {isLoading && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(2,6,23,0.8)', backdropFilter: 'blur(12px)' }}>
