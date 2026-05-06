@@ -350,23 +350,6 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Mobile Header */}
-      <div className="md:hidden" style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20,
-        background: 'rgba(2,6,23,0.97)', borderBottom: '1px solid rgba(20,30,50,0.9)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '0.875rem 1rem', backdropFilter: 'blur(12px)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <img src={COMPANY_LOGO_URL} alt="Logo" style={{ height: '2rem', width: 'auto', objectFit: 'contain' }} />
-          <span style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'white' }}>
-            Quality<span style={{ color: '#60a5fa' }}>Tracker</span>
-          </span>
-        </div>
-        <button onClick={handleLogout} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>
-          <LogOut style={{ width: '1rem', height: '1rem' }} />
-        </button>
-      </div>
 
       {/* Mobile Bottom Nav */}
       <div className="mobile-bottom-nav md:hidden">
@@ -396,8 +379,7 @@ const App: React.FC = () => {
         style={{
           background: '#020617',
           padding: '1.5rem',
-          paddingTop: isDesktop ? '1.5rem' : '4.5rem',
-          paddingBottom: isDesktop ? '1.5rem' : '5.5rem',
+          paddingBottom: isDesktop ? '1.5rem' : '5rem',
         }}
       >
         {isLoading && (
