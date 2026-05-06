@@ -262,265 +262,266 @@ const App: React.FC = () => {
     return <Login onLogin={setCurrentUser} />;
   }
 
-  const NavItem = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => (
-    <button
-      onClick={() => {
-        setActiveTab(id);
-        setIsMobileMenuOpen(false);
-      }}
-      className={`flex items-center w-full px-6 py-4 text-left transition-colors border-r-4 ${
-        activeTab === id 
-          ? 'bg-slate-800 border-blue-500 text-blue-400 font-medium' 
-          : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-      }`}
-    >
-      <Icon className={`w-5 h-5 mr-3 ${activeTab === id ? 'text-blue-400' : 'text-slate-500'}`} />
-      {label}
-    </button>
-  );
+  const NavItem = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => {
+    const active = activeTab === id;
+    return (
+      <button
+        onClick={() => setActiveTab(id)}
+        style={{
+          display: 'flex', alignItems: 'center', width: '100%',
+          padding: '0.75rem 1.25rem', textAlign: 'left', border: 'none', cursor: 'pointer',
+          borderLeft: `3px solid ${active ? '#3b82f6' : 'transparent'}`,
+          background: active ? 'rgba(59,130,246,0.1)' : 'none',
+          color: active ? '#60a5fa' : '#475569',
+          fontWeight: active ? 600 : 400, fontSize: '0.875rem',
+          transition: 'all 0.15s', margin: '0.125rem 0',
+        }}
+        onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(30,41,59,0.6)'; e.currentTarget.style.color = '#94a3b8'; } }}
+        onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#475569'; } }}
+      >
+        <Icon style={{ width: '1rem', height: '1rem', marginRight: '0.75rem', flexShrink: 0 }} />
+        {label}
+      </button>
+    );
+  };
+
+  // Tabs available for mobile bottom nav
+  const mobileNavItems = [
+    ...(canUseTracker ? [{ id: 'tracker' as const, label: 'Projetar', icon: PenTool }] : []),
+    ...(canUseTracker ? [{ id: 'history' as const, label: 'Histórico', icon: History }] : []),
+    { id: 'dashboard' as const, label: 'Gráficos', icon: LayoutDashboard },
+    { id: 'issues' as const, label: 'Qualidade', icon: AlertOctagon },
+    ...(canSeeInnovations ? [{ id: 'innovations' as const, label: 'Inovações', icon: Lightbulb }] : []),
+    ...(['GESTOR', 'CEO'].includes(currentUser.role) ? [{ id: 'team' as const, label: 'Equipe', icon: Users }] : []),
+  ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen" style={{ background: '#020617' }}>
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 fixed h-full z-10 text-white shadow-xl">
-        <div className="p-6 border-b border-slate-800">
-          <div className="mb-6 flex items-center gap-3">
-             <img 
-               src={COMPANY_LOGO_URL}
-               alt="Logo" 
-               className="h-10 w-auto max-w-[50px] object-contain" 
-             />
-             <div className="flex flex-col">
-                <span className="text-2xl font-bold text-white leading-none tracking-tight">
-                  Quality<span className="text-blue-500">Tracker</span>
-                </span>
-             </div>
+      <aside className="hidden md:flex flex-col w-64 fixed h-full z-10 text-white" style={{ background: 'rgba(8,15,30,0.97)', borderRight: '1px solid rgba(20,30,50,0.9)' }}>
+        {/* Logo area */}
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(20,30,50,0.9)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <img src={COMPANY_LOGO_URL} alt="Logo" style={{ height: '2.5rem', width: 'auto', maxWidth: '2.5rem', objectFit: 'contain' }} />
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>
+              Quality<span style={{ color: '#60a5fa' }}>Tracker</span>
+            </span>
           </div>
-          
-          <div className="flex items-center text-slate-500 text-xs mb-1 uppercase tracking-wider font-semibold">
-            Painel de Controle
-          </div>
-          <p className="text-sm font-medium text-slate-200 truncate">{currentUser.name}</p>
-          <div className="flex items-center mt-2 gap-2">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full inline-block">
-                {currentUser.role}
+          <div style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(30,41,59,0.8)', borderRadius: '0.75rem', padding: '0.75rem' }}>
+            <p style={{ fontSize: '0.6875rem', color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>Usuário Ativo</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, color: '#e2e8f0', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser.name}</p>
+            <span style={{ display: 'inline-block', marginTop: '0.375rem', fontSize: '0.6rem', fontWeight: 700, color: '#60a5fa', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', padding: '0.125rem 0.5rem', borderRadius: '999px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              {currentUser.role}
             </span>
           </div>
         </div>
-        <nav className="flex-1 mt-6 overflow-y-auto">
-          {canUseTracker && (
-             <NavItem id="tracker" label="Projetar" icon={PenTool} />
-          )}
-          
-          {canUseTracker && (
-            <NavItem id="history" label="Histórico" icon={History} />
-          )}
 
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0' }}>
+          {canUseTracker && <NavItem id="tracker" label="Projetar" icon={PenTool} />}
+          {canUseTracker && <NavItem id="history" label="Histórico" icon={History} />}
           <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
           <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
-          
-          {canSeeInnovations && (
-             <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
-          )}
-          
-          {['GESTOR', 'CEO'].includes(currentUser.role) && (
-            <NavItem id="team" label="Gestão de Equipe" icon={Users} />
-          )}
+          {canSeeInnovations && <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />}
+          {['GESTOR', 'CEO'].includes(currentUser.role) && <NavItem id="team" label="Gestão de Equipe" icon={Users} />}
         </nav>
-        <div className="p-6 border-t border-slate-800 bg-slate-900">
-          <button 
-            onClick={handleLogout}
-            className="flex items-center text-sm text-red-400 hover:text-red-300 hover:bg-slate-800/50 p-2 rounded-lg font-medium transition-colors w-full mb-4"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
+
+        <div style={{ padding: '1.25rem 1rem', borderTop: '1px solid rgba(20,30,50,0.9)' }}>
+          <button onClick={handleLogout} style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.625rem 0.75rem',
+            borderRadius: '0.625rem', color: '#f87171', background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '0.875rem', fontWeight: 600, transition: 'background 0.15s', textAlign: 'left',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+            <LogOut style={{ width: '1rem', height: '1rem' }} />
             Sair da Conta
           </button>
-          <div className="text-center text-xs text-slate-600 font-bold">
-            <span className="text-blue-500 text-sm">JIMP</span><span className="text-orange-500 text-sm">NEXUS</span>
+          <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
+            <span style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.8125rem' }}>JIMP</span>
+            <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.8125rem' }}>NEXUS</span>
           </div>
         </div>
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 w-full bg-slate-900 border-b border-slate-800 z-20 flex justify-between items-center p-4 shadow-md">
-        <div className="h-8 flex items-center gap-2">
-            <img 
-                src={COMPANY_LOGO_URL} 
-                alt="Logo" 
-                className="h-full w-auto object-contain"
-            />
-            <span className="text-lg font-bold text-white">
-                Quality<span className="text-blue-500">Tracker</span>
-            </span>
+      <div className="md:hidden" style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20,
+        background: 'rgba(2,6,23,0.97)', borderBottom: '1px solid rgba(20,30,50,0.9)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '0.875rem 1rem', backdropFilter: 'blur(12px)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <img src={COMPANY_LOGO_URL} alt="Logo" style={{ height: '2rem', width: 'auto', objectFit: 'contain' }} />
+          <span style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'white' }}>
+            Quality<span style={{ color: '#60a5fa' }}>Tracker</span>
+          </span>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-300 hover:text-white transition-colors">
-          {isMobileMenuOpen ? <X /> : <Menu />}
+        <button onClick={handleLogout} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>
+          <LogOut style={{ width: '1rem', height: '1rem' }} />
         </button>
       </div>
 
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900 z-10 pt-20 md:hidden animate-in slide-in-from-right duration-200">
-          <nav className="flex flex-col h-full overflow-y-auto">
-            {canUseTracker && (
-                <NavItem id="tracker" label="Projetar" icon={PenTool} />
-            )}
-            {canUseTracker && (
-                <NavItem id="history" label="Histórico" icon={History} />
-            )}
-            <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
-            <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
-            {canSeeInnovations && (
-                <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />
-            )}
-            {['GESTOR', 'CEO'].includes(currentUser.role) && (
-               <NavItem id="team" label="Gestão de Equipe" icon={Users} />
-            )}
-            <div className="mt-auto p-6 border-t border-slate-800">
-              <button 
-                onClick={handleLogout}
-                className="flex items-center w-full px-4 py-3 text-left text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                <LogOut className="w-5 h-5 mr-3" />
-                Sair
+      {/* Mobile Bottom Nav */}
+      <div className="mobile-bottom-nav md:hidden">
+        <div style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem 0.25rem' }}>
+          {mobileNavItems.slice(0, 5).map(({ id, label, icon: Icon }) => {
+            const active = activeTab === id;
+            return (
+              <button key={id} onClick={() => setActiveTab(id)} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
+                padding: '0.375rem 0.625rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
+                background: active ? 'rgba(59,130,246,0.15)' : 'none',
+                color: active ? '#60a5fa' : '#475569', transition: 'all 0.15s', flex: 1,
+              }}>
+                <Icon style={{ width: '1.125rem', height: '1.125rem' }} />
+                <span style={{ fontSize: '0.5625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
               </button>
-            </div>
-          </nav>
+            );
+          })}
         </div>
-      )}
+      </div>
+
+
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-6 pt-24 md:pt-6 transition-all bg-gray-50 min-h-screen">
+      <main
+        className="flex-1 md:ml-64 min-h-screen"
+        style={{ background: '#020617', padding: '1.5rem', paddingTop: '4.5rem', paddingBottom: '5.5rem' }}
+      >
+        <style>{`@media (min-width: 768px) { .flex-1.md\\:ml-64.min-h-screen { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; } }`}</style>
         {isLoading && (
-          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-md transition-all duration-300">
-            <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-300 transform scale-100">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 border-4 border-blue-100 rounded-full animate-pulse"></div>
-                <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce"></div>
-                </div>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(2,6,23,0.8)', backdropFilter: 'blur(12px)' }}>
+            <div style={{ background: 'rgba(10,18,35,0.95)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+              <div style={{ position: 'relative', width: '3.5rem', height: '3.5rem' }}>
+                <div style={{ position: 'absolute', inset: 0, border: '3px solid rgba(59,130,246,0.15)', borderRadius: '50%' }} />
+                <div style={{ position: 'absolute', inset: 0, border: '3px solid transparent', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                <img src={COMPANY_LOGO_URL} alt="" style={{ position: 'absolute', inset: '0.5rem', objectFit: 'contain' }} />
               </div>
-              <span className="text-xl font-bold text-gray-800 tracking-tight">Quality<span className="text-blue-600">Tracker</span></span>
-              <span className="text-sm text-gray-500 mt-2 font-medium animate-pulse">Processando informações...</span>
+              <span style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>
+                Quality<span style={{ color: '#60a5fa' }}>Tracker</span>
+              </span>
+              <span style={{ fontSize: '0.8125rem', color: '#475569', animation: 'pulse 2s ease-in-out infinite' }}>Processando...</span>
             </div>
           </div>
         )}
-        <div className="max-w-5xl mx-auto">
-          {/* Tracker Tab */}
-          <div className={activeTab === 'tracker' && canUseTracker ? 'block space-y-6' : 'hidden'}>
-            <div className="mb-6 flex justify-between items-end">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">Área de Projeto</h2>
-                <p className="text-gray-500">Bem-vindo, <span className="font-semibold text-blue-600">{currentUser.name}</span></p>
-              </div>
-            </div>
-            <ProjectTracker 
-              existingProjects={displayData.projects}
-              onCreate={handleProjectCreate}
-              onUpdate={handleProjectUpdate}
-              isVisible={activeTab === 'tracker'}
-              onNavigateBack={() => setActiveTab('tracker')}
-            />
-          </div>
 
-          {activeTab === 'history' && canUseTracker && (
-            <div className="space-y-6">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Histórico de Liberações</h2>
-                <p className="text-gray-500">
-                  {canSeeAllHistory
-                    ? "Visão geral de todas as liberações da equipe." 
-                    : "Consulte suas liberações passadas."}
-                </p>
-              </div>
-              <ProjectHistory 
-                data={displayData} 
-                currentUser={currentUser} 
-                onDelete={handleProjectDelete}
-              />
-            </div>
-          )}
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
 
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-               <div className="mb-6 flex items-center gap-4">
-                 <div className="bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-800">
-                    <img 
-                      src={COMPANY_LOGO_URL}
-                      alt="Logo" 
-                      className="h-12 w-auto object-contain" 
+          {/* Page header helper */}
+          {(() => {
+            const PageHeader = ({ title, subtitle, extra }: { title: React.ReactNode; subtitle: string; extra?: React.ReactNode }) => (
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                  <img src={COMPANY_LOGO_URL} alt="Logo" style={{ height: '2.25rem', width: 'auto', objectFit: 'contain', opacity: 0.9 }} />
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>{title}</h2>
+                    <p style={{ margin: '0.125rem 0 0', fontSize: '0.8125rem', color: '#475569' }}>{subtitle}</p>
+                  </div>
+                </div>
+                {extra}
+              </div>
+            );
+
+            const issueTabToggle = (
+              <div style={{ display: 'flex', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.75rem', padding: '0.25rem', gap: '0.25rem' }}>
+                {[{ id: 'new', label: 'Novo Registro' }, { id: 'history', label: 'Histórico' }].map(t => (
+                  <button key={t.id} onClick={() => setIssueTab(t.id as any)} style={{
+                    padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.8125rem', fontWeight: 600,
+                    border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                    background: issueTab === t.id ? 'rgba(59,130,246,0.2)' : 'none',
+                    color: issueTab === t.id ? '#60a5fa' : '#475569',
+                  }}>{t.label}</button>
+                ))}
+              </div>
+            );
+
+            return (
+              <>
+                {/* Tracker */}
+                <div className={activeTab === 'tracker' && canUseTracker ? 'block' : 'hidden'}>
+                  <PageHeader
+                    title="Área de Projeto"
+                    subtitle={`Bem-vindo, ${currentUser.name}`}
+                  />
+                  <ProjectTracker
+                    existingProjects={displayData.projects}
+                    onCreate={handleProjectCreate}
+                    onUpdate={handleProjectUpdate}
+                    isVisible={activeTab === 'tracker'}
+                    onNavigateBack={() => setActiveTab('tracker')}
+                  />
+                </div>
+
+                {/* History */}
+                {activeTab === 'history' && canUseTracker && (
+                  <div>
+                    <PageHeader
+                      title="Histórico de Liberações"
+                      subtitle={canSeeAllHistory ? 'Visão geral de todas as liberações da equipe.' : 'Suas liberações passadas.'}
                     />
-                 </div>
-                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Painel de Desempenho</h2>
-                    <p className="text-gray-500">
-                      {canSeeAllHistory ? "Indicadores globais da equipe." : "Seus indicadores de produtividade."}
-                    </p>
-                 </div>
-              </div>
-              <Dashboard data={displayData} currentUser={currentUser} />
-            </div>
-          )}
+                    <ProjectHistory data={displayData} currentUser={currentUser} onDelete={handleProjectDelete} />
+                  </div>
+                )}
 
-          {activeTab === 'issues' && (
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div>
-                   <h2 className="text-2xl font-bold text-gray-800">Gestão de Qualidade</h2>
-                   <p className="text-gray-500">Reporte e analise os problemas ocorridos.</p>
-                </div>
-                <div className="bg-gray-200 p-1 rounded-lg inline-flex">
-                  <button 
-                    onClick={() => setIssueTab('new')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                      issueTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Novo Registro
-                  </button>
-                  <button 
-                    onClick={() => setIssueTab('history')}
-                     className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                      issueTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Histórico de Problemas
-                  </button>
-                </div>
-              </div>
+                {/* Dashboard */}
+                {activeTab === 'dashboard' && (
+                  <div>
+                    <PageHeader
+                      title="Painel de Desempenho"
+                      subtitle={canSeeAllHistory ? 'Indicadores globais da equipe.' : 'Seus indicadores de produtividade.'}
+                    />
+                    <Dashboard data={displayData} currentUser={currentUser} />
+                  </div>
+                )}
 
-              {issueTab === 'new' ? (
-                <IssueReporter onReport={handleIssueReport} />
-              ) : (
-                <IssueHistory 
-                  data={displayData} 
-                  currentUser={currentUser} 
-                  onDelete={handleIssueDelete}
-                  onUpdate={handleIssueUpdate}
-                />
-              )}
-            </div>
-          )}
+                {/* Issues */}
+                {activeTab === 'issues' && (
+                  <div>
+                    <PageHeader
+                      title="Gestão de Qualidade"
+                      subtitle="Reporte e analise os problemas ocorridos."
+                      extra={issueTabToggle}
+                    />
+                    {issueTab === 'new'
+                      ? <IssueReporter onReport={handleIssueReport} />
+                      : <IssueHistory data={displayData} currentUser={currentUser} onDelete={handleIssueDelete} onUpdate={handleIssueUpdate} />
+                    }
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {activeTab === 'innovations' && canSeeInnovations && (
-             <InnovationManager 
-                innovations={displayData.innovations} 
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '1.5rem' }}>
+                <img src={COMPANY_LOGO_URL} alt="Logo" style={{ height: '2.25rem', width: 'auto', objectFit: 'contain', opacity: 0.9 }} />
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Inovações & Custos</h2>
+                  <p style={{ margin: '0.125rem 0 0', fontSize: '0.8125rem', color: '#475569' }}>Gerencie propostas e economias aprovadas.</p>
+                </div>
+              </div>
+              <InnovationManager
+                innovations={displayData.innovations}
                 onAdd={handleInnovationAdd}
                 onStatusChange={handleInnovationStatusChange}
                 onDelete={handleInnovationDelete}
                 currentUser={currentUser}
-             />
+              />
+            </div>
           )}
 
           {activeTab === 'team' && ['GESTOR', 'CEO'].includes(currentUser.role) && (
-             <div className="space-y-6">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Gestão de Equipe</h2>
-                  <p className="text-gray-500">Adicione novos membros e gerencie permissões de acesso.</p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '1.5rem' }}>
+                <img src={COMPANY_LOGO_URL} alt="Logo" style={{ height: '2.25rem', width: 'auto', objectFit: 'contain', opacity: 0.9 }} />
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Gestão de Equipe</h2>
+                  <p style={{ margin: '0.125rem 0 0', fontSize: '0.8125rem', color: '#475569' }}>Adicione membros e gerencie permissões.</p>
                 </div>
-                <UserManagement />
-             </div>
+              </div>
+              <UserManagement />
+            </div>
           )}
         </div>
       </main>

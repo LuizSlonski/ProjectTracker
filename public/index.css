@@ -1,0 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: 'Outfit', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Login animations ── */
+@keyframes login-reveal {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+@keyframes orb-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(20px, -15px) scale(1.05); }
+  66%       { transform: translate(-15px, 10px) scale(0.97); }
+}
+@keyframes top-line-slide {
+  from { opacity: 0; transform: scaleX(0); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0px);   }
+  50%       { transform: translateY(-6px);  }
+}
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  50%       { opacity: 0.8; box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+}
+@keyframes btn-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.login-card {
+  animation: login-reveal 0.65s cubic-bezier(0.16,1,0.3,1) both;
+}
+.login-orb-1 { animation: orb-drift 12s ease-in-out infinite; }
+.login-orb-2 { animation: orb-drift 16s ease-in-out infinite reverse; }
+.login-logo  { animation: logo-float 4s ease-in-out infinite; }
+.login-top-line { animation: top-line-slide 0.8s 0.3s cubic-bezier(0.16,1,0.3,1) both; transform-origin: left; }
+.status-dot  { animation: status-pulse 2s ease-in-out infinite; }
+
+.login-btn {
+  background: linear-gradient(90deg, #1e40af, #2563eb, #3b82f6, #2563eb, #1e40af);
+  background-size: 300% auto;
+  animation: btn-shimmer 4s linear infinite;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.login-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 30px rgba(37,99,235,0.45);
+}
+.login-btn:active:not(:disabled) { transform: translateY(0); }
+
+.login-input {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  color: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.login-input::placeholder { color: #475569; }
+.login-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.7);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 0 20px rgba(59, 130, 246, 0.08);
+}
+
+/* ── Dashboard & Quality animations ── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.dash-card {
+  animation: fade-up 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.dash-card:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(0,0,0,0.18); }
+
+/* stagger helpers */
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.10s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.20s; }
+.delay-5 { animation-delay: 0.25s; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ── Mobile bottom nav ── */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 40;
+  background: rgba(2, 6, 23, 0.95);
+  border-top: 1px solid rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(12px);
+  padding: env(safe-area-inset-bottom, 0);
+}
+
+/* ── Dark form inputs ── */
+.dark-input {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  color: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.dark-input::placeholder { color: #475569; }
+.dark-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dark-select {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  color: white;
+  transition: border-color 0.2s;
+}
+.dark-select:focus {
+  outline: none;
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+.dark-select option { background: #1e293b; color: white; }
+
+/* ── Spin for Loader2 ── */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.animate-spin-css { animation: spin 1s linear infinite; }

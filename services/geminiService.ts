@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { ProjectSession, IssueRecord } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export const analyzePerformance = async (projects: ProjectSession[], issues: IssueRecord[]) => {
   try {
@@ -23,6 +24,8 @@ export const analyzePerformance = async (projects: ProjectSession[], issues: Iss
       Problemas Reportados Recentes:
       ${issueSummary}
     `;
+
+    if (!ai) return "Chave de API Gemini não configurada. Defina GEMINI_API_KEY nas variáveis de ambiente.";
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
