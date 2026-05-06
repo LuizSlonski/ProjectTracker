@@ -478,8 +478,21 @@ const App: React.FC = () => {
                     <PageHeader
                       title="Gestão de Qualidade"
                       subtitle="Reporte e analise os problemas ocorridos."
-                      extra={issueTabToggle}
                     />
+                    {/* Tab toggle — linha separada, sempre visível */}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                      {[{ id: 'new', label: 'Novo Registro' }, { id: 'history', label: 'Histórico de Problemas' }].map(t => (
+                        <button key={t.id} onClick={() => setIssueTab(t.id as any)} style={{
+                          padding: '0.6rem 1.25rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontWeight: 600,
+                          border: issueTab === t.id ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(30,41,59,0.9)',
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          background: issueTab === t.id ? 'rgba(59,130,246,0.18)' : 'rgba(10,18,35,0.75)',
+                          color: issueTab === t.id ? '#60a5fa' : '#475569',
+                        }}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
                     {issueTab === 'new'
                       ? <IssueReporter onReport={handleIssueReport} />
                       : <IssueHistory data={displayData} currentUser={currentUser} onDelete={handleIssueDelete} onUpdate={handleIssueUpdate} />
