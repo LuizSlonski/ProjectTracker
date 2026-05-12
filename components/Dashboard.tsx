@@ -2,9 +2,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, LineChart, Line, ComposedChart, Area
 } from 'recharts';
-import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, TrendingDown, AlertTriangle, Lightbulb, ChevronDown, Bot, Timer } from 'lucide-react';
+import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, TrendingDown, AlertTriangle, Lightbulb, ChevronDown, Bot, Timer, Percent, DollarSign, Users, Hash, TrendingUp, Repeat, User as UserIcon } from 'lucide-react';
 import { AppState, User } from '../types';
 import { analyzePerformance } from '../services/geminiService';
 import { fetchUsers } from '../services/storageService';
@@ -45,6 +45,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [costChartDate, setCostChartDate] = useState({ start: '', end: '' });
   const [issuePieDate, setIssuePieDate] = useState({ start: '', end: '' });
   const [reworkTimeByAreaDate, setReworkTimeByAreaDate] = useState({ start: '', end: '' });
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    fetchUsers().then(setUsers);
+  }, []);
 
   const isRestrictedRole = ['QUALIDADE', 'GESTOR_QUALIDADE', 'PROCESSOS'].includes(currentUser.role);
 
@@ -98,6 +103,101 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     filteredInnovations.filter(i => i.status === 'APPROVED' || i.status === 'IMPLEMENTED')
       .reduce((a, c) => a + (c.totalAnnualSavings || 0), 0),
     [filteredInnovations]);
+
+  // New quality KPIs
+  const reworkRate = useMemo(() => {
+    if (filteredProjects.length === 0) return 0;
+    const projectsWithIssues = new Set(filteredIssues.map(i => i.projectNs)).size;
+    return Math.round((projectsWithIssues / filteredProjects.length) * 100);
+  }, [filteredProjects, filteredIssues]);
+
+  const avgReworkCost = useMemo(() => {
+    const withCost = filteredIssues.filter(i => i.totalCost && i.totalCost > 0);
+    return withCost.length > 0 ? withCost.reduce((a, c) => a + (c.totalCost || 0), 0) / withCost.length : 0;
+  }, [filteredIssues]);
+
+  const avgReworkTime = useMemo(() => {
+    const withTime = filteredIssues.filter(i => i.timeSpent && i.timeSpent > 0);
+    return withTime.length > 0 ? Math.round(withTime.reduce((a, c) => a + (c.timeSpent || 0), 0) / withTime.length) : 0;
+  }, [filteredIssues]);
+
+  const totalPeopleHours = useMemo(() => {
+    return filteredIssues.reduce((a, c) => {
+      const mins = c.timeSpent || 0;
+      const people = c.peopleInvolved || 1;
+      return a + (mins * people) / 60;
+    }, 0);
+  }, [filteredIssues]);
+
+  const totalIssueCount = filteredIssues.length;
+
+  // Monthly trend data
+  const monthlyTrendData = useMemo(() => {
+    const byMonth: Record<string, number> = {};
+    filteredIssues.forEach(i => {
+      const d = new Date(i.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      byMonth[key] = (byMonth[key] || 0) + 1;
+    });
+    return Object.entries(byMonth)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, count]) => ({ month, count }));
+  }, [filteredIssues]);
+
+  // Monthly cost trend
+  const monthlyCostData = useMemo(() => {
+    const byMonth: Record<string, number> = {};
+    filteredIssues.forEach(i => {
+      const d = new Date(i.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      byMonth[key] = (byMonth[key] || 0) + (i.totalCost || 0);
+    });
+    return Object.entries(byMonth)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, cost]) => ({ month, cost }));
+  }, [filteredIssues]);
+
+  // Pareto data
+  const paretoData = useMemo(() => {
+    const byType: Record<string, number> = {};
+    filteredIssues.forEach(i => { byType[i.type] = (byType[i.type] || 0) + 1; });
+    const sorted = Object.entries(byType)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    const total = sorted.reduce((a, c) => a + c.value, 0);
+    let cumulative = 0;
+    return sorted.map(item => {
+      cumulative += item.value;
+      return { ...item, cumPercent: total > 0 ? Math.round((cumulative / total) * 100) : 0 };
+    });
+  }, [filteredIssues]);
+
+  // Top NS reincidentes
+  const topNsData = useMemo(() => {
+    const byNs: Record<string, number> = {};
+    filteredIssues.forEach(i => { byNs[i.projectNs] = (byNs[i.projectNs] || 0) + 1; });
+    return Object.entries(byNs)
+      .map(([name, value]) => ({ name: `NS ${name}`, value }))
+      .sort((a, b) => b.value - a.value)
+      .filter(i => i.value > 1)
+      .slice(0, 8);
+  }, [filteredIssues]);
+
+  // Issues by reporter
+  const issuesByReporterData = useMemo(() => {
+    const userMap: Record<string, string> = {};
+    users.forEach(u => { userMap[u.id] = u.name; userMap[u.username] = u.name; });
+    const byReporter: Record<string, number> = {};
+    filteredIssues.forEach(i => {
+      const reporterId = i.reportedBy || 'Não informado';
+      const reporterName = userMap[reporterId] || reporterId;
+      byReporter[reporterName] = (byReporter[reporterName] || 0) + 1;
+    });
+    return Object.entries(byReporter)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [filteredIssues, users]);
 
   const costByTypeData = useMemo(() => {
     const filtered = filterByDate(data.issues, costChartDate.start, costChartDate.end, 'date');
@@ -224,8 +324,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
       )}
 
-      {/* Rework KPIs – visible to all */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.875rem' }}>
+      {/* Quality KPIs – visible to all */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem' }}>
         {/* Rework cost */}
         <div className="dash-card" style={{
           ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -257,6 +357,86 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
           </div>
           <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(251,146,60,0.12)' }}>
             <Timer style={{ width: '1.125rem', height: '1.125rem', color: '#f97316' }} />
+          </div>
+        </div>
+
+        {/* Rework Rate */}
+        <div className="dash-card" style={{
+          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderLeft: '3px solid rgba(168,85,247,0.6)',
+        }}>
+          <div>
+            <p style={{ ...S.label, color: '#c084fc' }}>Taxa de Retrabalho</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#d8b4fe', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              {reworkRate}%
+            </p>
+          </div>
+          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(168,85,247,0.12)' }}>
+            <Percent style={{ width: '1.125rem', height: '1.125rem', color: '#a855f7' }} />
+          </div>
+        </div>
+
+        {/* Avg Rework Cost */}
+        <div className="dash-card" style={{
+          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderLeft: '3px solid rgba(236,72,153,0.6)',
+        }}>
+          <div>
+            <p style={{ ...S.label, color: '#f472b6' }}>Custo Médio / Ocorrência</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f9a8d4', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              {formatCurrency(avgReworkCost)}
+            </p>
+          </div>
+          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(236,72,153,0.12)' }}>
+            <DollarSign style={{ width: '1.125rem', height: '1.125rem', color: '#ec4899' }} />
+          </div>
+        </div>
+
+        {/* MTTR */}
+        <div className="dash-card" style={{
+          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderLeft: '3px solid rgba(6,182,212,0.6)',
+        }}>
+          <div>
+            <p style={{ ...S.label, color: '#22d3ee' }}>Tempo Médio (MTTR)</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#67e8f9', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              {avgReworkTime >= 60 ? `${Math.floor(avgReworkTime / 60)}h ${avgReworkTime % 60}m` : `${avgReworkTime}m`}
+            </p>
+          </div>
+          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(6,182,212,0.12)' }}>
+            <Clock style={{ width: '1.125rem', height: '1.125rem', color: '#06b6d4' }} />
+          </div>
+        </div>
+
+        {/* People-Hours */}
+        <div className="dash-card" style={{
+          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderLeft: '3px solid rgba(20,184,166,0.6)',
+        }}>
+          <div>
+            <p style={{ ...S.label, color: '#2dd4bf' }}>Pessoas-Hora</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#5eead4', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              {totalPeopleHours.toFixed(1)}h
+            </p>
+          </div>
+          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(20,184,166,0.12)' }}>
+            <Users style={{ width: '1.125rem', height: '1.125rem', color: '#14b8a6' }} />
+          </div>
+        </div>
+
+        {/* Total Issues */}
+        <div className="dash-card" style={{
+          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderLeft: '3px solid rgba(99,102,241,0.6)',
+        }}>
+          <div>
+            <p style={{ ...S.label, color: '#818cf8' }}>Total Ocorrências</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#a5b4fc', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              {totalIssueCount}
+            </p>
+          </div>
+          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(99,102,241,0.12)' }}>
+            <Hash style={{ width: '1.125rem', height: '1.125rem', color: '#6366f1' }} />
           </div>
         </div>
       </div>
@@ -461,6 +641,202 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               </ResponsiveContainer>
             ) : (
               <EmptyState label="Nenhum problema registrado no período." />
+            )}
+          </div>
+        </div>
+
+        {/* Monthly Issue Trend – line chart */}
+        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={S.sectionTitle}>
+              <TrendingUp style={{ width: '1rem', height: '1rem', color: '#22c55e' }} />
+              Tendência Mensal de Ocorrências
+            </span>
+          </div>
+          <div style={{ height: '300px', width: '100%' }}>
+            {monthlyTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyTrendData} margin={{ left: 8, right: 24, top: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                  <YAxis tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div style={{ background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0' }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{label}</p>
+                          <p style={{ color: '#4ade80' }}>Ocorrências: <strong>{payload[0].value}</strong></p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Line type="monotone" dataKey="count" stroke="#22c55e" strokeWidth={2.5} dot={{ fill: '#22c55e', r: 4 }} activeDot={{ r: 6, fill: '#4ade80' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Sem dados mensais para exibir." />
+            )}
+          </div>
+        </div>
+
+        {/* Monthly Cost Trend – bar chart */}
+        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={S.sectionTitle}>
+              <DollarSign style={{ width: '1rem', height: '1rem', color: '#ef4444' }} />
+              Custo de Retrabalho por Mês
+            </span>
+          </div>
+          <div style={{ height: '300px', width: '100%' }}>
+            {monthlyCostData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyCostData} margin={{ left: 8, right: 24, top: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                  <YAxis tickLine={false} axisLine={false} tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} style={{ fontSize: '10px', fill: '#64748b' }} />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div style={{ background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0' }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{label}</p>
+                          <p style={{ color: '#f87171' }}>Custo: <strong>{formatCurrency(payload[0].value)}</strong></p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="cost" name="Custo" radius={[6, 6, 0, 0]} barSize={32}>
+                    {monthlyCostData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Sem dados de custo mensal." />
+            )}
+          </div>
+        </div>
+
+        {/* Pareto Analysis – composed chart */}
+        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={S.sectionTitle}>
+              <TrendingDown style={{ width: '1rem', height: '1rem', color: '#eab308' }} />
+              Análise de Pareto
+            </span>
+          </div>
+          <div style={{ height: '300px', width: '100%' }}>
+            {paretoData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={paretoData} margin={{ left: 8, right: 24, top: 8, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)" />
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} style={{ fontSize: '9px', fill: '#94a3b8' }} angle={-35} textAnchor="end" interval={0} />
+                  <YAxis yAxisId="left" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} domain={[0, 100]} style={{ fontSize: '10px', fill: '#64748b' }} />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div style={{ background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0' }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{label}</p>
+                          <p style={{ color: '#3b82f6' }}>Qtde: <strong>{payload[0]?.value}</strong></p>
+                          <p style={{ color: '#eab308' }}>Acumulado: <strong>{payload[1]?.value}%</strong></p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar yAxisId="left" dataKey="value" name="Ocorrências" radius={[6, 6, 0, 0]} barSize={28}>
+                    {paretoData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                  <Line yAxisId="right" type="monotone" dataKey="cumPercent" name="% Acumulado" stroke="#eab308" strokeWidth={2.5} dot={{ fill: '#eab308', r: 4 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Sem dados para análise de Pareto." />
+            )}
+          </div>
+        </div>
+
+        {/* Top NS Reincidentes – bar chart */}
+        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={S.sectionTitle}>
+              <Repeat style={{ width: '1rem', height: '1rem', color: '#f97316' }} />
+              Top NS Reincidentes
+            </span>
+          </div>
+          <div style={{ height: '300px', width: '100%' }}>
+            {topNsData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topNsData} layout="vertical" margin={{ left: 8, right: 24 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
+                  <XAxis type="number" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
+                  <YAxis dataKey="name" type="category" width={130} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div style={{ background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0' }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{label}</p>
+                          <p style={{ color: '#fb923c' }}>Ocorrências: <strong>{payload[0].value}</strong></p>
+                        </div>
+                      );
+                    }}
+                    cursor={{ fill: 'rgba(30,41,59,0.5)' }}
+                  />
+                  <Bar dataKey="value" name="Ocorrências" radius={[0, 6, 6, 0]} barSize={20}>
+                    {topNsData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Nenhum NS com reincidência encontrado." />
+            )}
+          </div>
+        </div>
+
+        {/* Issues by Reporter – bar chart */}
+        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={S.sectionTitle}>
+              <UserIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
+              Ocorrências por Reportador
+            </span>
+          </div>
+          <div style={{ height: '300px', width: '100%' }}>
+            {issuesByReporterData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={issuesByReporterData} layout="vertical" margin={{ left: 8, right: 24 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
+                  <XAxis type="number" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
+                  <YAxis dataKey="name" type="category" width={130} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div style={{ background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0' }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{label}</p>
+                          <p style={{ color: '#a78bfa' }}>Reportados: <strong>{payload[0].value}</strong></p>
+                        </div>
+                      );
+                    }}
+                    cursor={{ fill: 'rgba(30,41,59,0.5)' }}
+                  />
+                  <Bar dataKey="value" name="Reportados" radius={[0, 6, 6, 0]} barSize={20}>
+                    {issuesByReporterData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Sem dados de reportadores." />
             )}
           </div>
         </div>
