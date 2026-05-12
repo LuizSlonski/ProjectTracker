@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, TrendingDown, AlertTriangle, Lightbulb, ChevronDown, Bot } from 'lucide-react';
+import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, TrendingDown, AlertTriangle, Lightbulb, ChevronDown, Bot, Timer } from 'lucide-react';
 import { AppState, User } from '../types';
 import { analyzePerformance } from '../services/geminiService';
 import { fetchUsers } from '../services/storageService';
@@ -44,6 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [endDate, setEndDate] = useState('');
   const [costChartDate, setCostChartDate] = useState({ start: '', end: '' });
   const [issuePieDate, setIssuePieDate] = useState({ start: '', end: '' });
+  const [reworkTimeByAreaDate, setReworkTimeByAreaDate] = useState({ start: '', end: '' });
 
   const isRestrictedRole = ['QUALIDADE', 'GESTOR_QUALIDADE', 'PROCESSOS'].includes(currentUser.role);
 
@@ -76,6 +77,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   }, [filteredProjects]);
 
   const totalReworkCost = useMemo(() => filteredIssues.reduce((a, c) => a + (c.totalCost || 0), 0), [filteredIssues]);
+
+  const totalReworkMinutes = useMemo(() => filteredIssues.reduce((a, c) => a + (c.timeSpent || 0), 0), [filteredIssues]);
+
+  const reworkTimeByAreaData = useMemo(() => {
+    const filtered = filterByDate(data.issues, reworkTimeByAreaDate.start, reworkTimeByAreaDate.end, 'date');
+    const byArea = filtered.reduce((acc, curr) => {
+      if (curr.timeSpent && curr.timeSpent > 0) {
+        acc[curr.type] = (acc[curr.type] || 0) + curr.timeSpent;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(byArea)
+      .map(([name, value]) => ({ name, value: Number(value) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [data.issues, reworkTimeByAreaDate]);
 
   const totalSavings = useMemo(() =>
     filteredInnovations.filter(i => i.status === 'APPROVED' || i.status === 'IMPLEMENTED')
@@ -207,7 +224,44 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
       )}
 
-      {/* KPIs */}
+      {/* Rework KPIs – visible to all */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.875rem' }}>
+        {/* Rework cost */}
+        <div className="dash-card" style={{
+          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderLeft: '3px solid rgba(239,68,68,0.6)',
+        }}>
+          <div>
+            <p style={{ ...S.label, color: '#f87171' }}>Custo de Retrabalho</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fca5a5', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              {formatCurrency(totalReworkCost)}
+            </p>
+          </div>
+          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(239,68,68,0.12)' }}>
+            <AlertTriangle style={{ width: '1.125rem', height: '1.125rem', color: '#ef4444' }} />
+          </div>
+        </div>
+
+        {/* Rework time */}
+        <div className="dash-card" style={{
+          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderLeft: '3px solid rgba(251,146,60,0.6)',
+        }}>
+          <div>
+            <p style={{ ...S.label, color: '#fb923c' }}>Tempo de Retrabalho</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fdba74', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              {totalReworkMinutes >= 60
+                ? `${Math.floor(totalReworkMinutes / 60)}h ${totalReworkMinutes % 60}m`
+                : `${totalReworkMinutes}m`}
+            </p>
+          </div>
+          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(251,146,60,0.12)' }}>
+            <Timer style={{ width: '1.125rem', height: '1.125rem', color: '#f97316' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Other KPIs – restricted */}
       {!isRestrictedRole && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.875rem' }}>
           {averageTimes.map((stat, i) => (
@@ -226,22 +280,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               </div>
             </div>
           ))}
-
-          {/* Rework cost */}
-          <div className="dash-card" style={{
-            ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            borderLeft: '3px solid rgba(239,68,68,0.6)',
-          }}>
-            <div>
-              <p style={{ ...S.label, color: '#f87171' }}>Custo de Retrabalho</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fca5a5', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
-                {formatCurrency(totalReworkCost)}
-              </p>
-            </div>
-            <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(239,68,68,0.12)' }}>
-              <AlertTriangle style={{ width: '1.125rem', height: '1.125rem', color: '#ef4444' }} />
-            </div>
-          </div>
 
           {/* Savings */}
           <div className="dash-card" style={{
@@ -262,10 +300,68 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       )}
 
       {/* Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+        {/* Rework time by area – bar chart */}
+        <div className="dash-card delay-2" style={{ ...S.card, minHeight: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={S.sectionTitle}>
+              <Timer style={{ width: '1rem', height: '1rem', color: '#f97316' }} />
+              Tempo de Retrabalho por Área (min)
+            </span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <DatePicker value={reworkTimeByAreaDate.start} onChange={v => setReworkTimeByAreaDate(p => ({ ...p, start: v }))} label="De" />
+              <DatePicker value={reworkTimeByAreaDate.end} onChange={v => setReworkTimeByAreaDate(p => ({ ...p, end: v }))} label="Até" />
+            </div>
+          </div>
+          <div style={{ height: '300px', width: '100%' }}>
+            {reworkTimeByAreaData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reworkTimeByAreaData} layout="vertical" margin={{ left: 8, right: 24 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
+                  <XAxis
+                    type="number"
+                    tickFormatter={v => `${v}m`}
+                    tickLine={false} axisLine={false}
+                    style={{ fontSize: '10px', fill: '#64748b' }}
+                  />
+                  <YAxis
+                    dataKey="name" type="category" width={130}
+                    tickLine={false} axisLine={false}
+                    style={{ fontSize: '10px', fill: '#94a3b8' }}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const mins = payload[0].value as number;
+                      const display = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+                      return (
+                        <div style={{
+                          background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)',
+                          borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0',
+                        }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{label}</p>
+                          <p style={{ color: '#fb923c' }}>Tempo: <strong>{display}</strong></p>
+                        </div>
+                      );
+                    }}
+                    cursor={{ fill: 'rgba(30,41,59,0.5)' }}
+                  />
+                  <Bar dataKey="value" name="Tempo (min)" radius={[0, 6, 6, 0]} barSize={20}>
+                    {reworkTimeByAreaData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Nenhum tempo de retrabalho registrado no período." />
+            )}
+          </div>
+        </div>
 
         {/* Cost by type – bar chart */}
-        <div className="dash-card delay-3" style={{ ...S.card, minHeight: '360px' }}>
+        <div className="dash-card delay-3" style={{ ...S.card, minHeight: '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <TrendingDown style={{ width: '1rem', height: '1rem', color: '#ef4444' }} />
@@ -276,15 +372,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               <DatePicker value={costChartDate.end} onChange={v => setCostChartDate(p => ({ ...p, end: v }))} label="Até" />
             </div>
           </div>
-          <div style={{ height: '260px', width: '100%' }}>
+          <div style={{ height: '300px', width: '100%' }}>
             {costByTypeData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={costByTypeData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <BarChart data={costByTypeData} layout="vertical" margin={{ left: 8, right: 24 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
-                  <XAxis type="number" tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} />
-                  <YAxis dataKey="name" type="category" width={110} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(30,41,59,0.5)' }} />
-                  <Bar dataKey="value" name="Custo" fill="#ef4444" radius={[0, 6, 6, 0]} barSize={18} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`}
+                    tickLine={false} axisLine={false}
+                    style={{ fontSize: '10px', fill: '#64748b' }}
+                  />
+                  <YAxis
+                    dataKey="name" type="category" width={130}
+                    tickLine={false} axisLine={false}
+                    style={{ fontSize: '10px', fill: '#94a3b8' }}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const val = payload[0].value as number;
+                      return (
+                        <div style={{
+                          background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)',
+                          borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0',
+                        }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{label}</p>
+                          <p style={{ color: '#f87171' }}>Custo: <strong>{formatCurrency(val)}</strong></p>
+                        </div>
+                      );
+                    }}
+                    cursor={{ fill: 'rgba(30,41,59,0.5)' }}
+                  />
+                  <Bar dataKey="value" name="Custo" radius={[0, 6, 6, 0]} barSize={20}>
+                    {costByTypeData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -294,7 +418,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Pie – issue distribution */}
-        <div className="dash-card delay-4" style={{ ...S.card, minHeight: '360px' }}>
+        <div className="dash-card delay-4" style={{ ...S.card, minHeight: '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <PieIcon style={{ width: '1rem', height: '1rem', color: '#3b82f6' }} />
@@ -305,16 +429,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               <DatePicker value={issuePieDate.end} onChange={v => setIssuePieDate(p => ({ ...p, end: v }))} label="Até" />
             </div>
           </div>
-          <div style={{ height: '260px', width: '100%' }}>
+          <div style={{ height: '300px', width: '100%' }}>
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} cx="45%" cy="50%" labelLine={false} outerRadius={90} dataKey="value">
+                  <Pie data={pieData} cx="45%" cy="50%" labelLine={false} outerRadius={110} dataKey="value">
                     {pieData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const entry = payload[0];
+                      return (
+                        <div style={{
+                          background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(30,41,59,0.9)',
+                          borderRadius: '0.625rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: '#e2e8f0',
+                        }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#94a3b8' }}>{entry.name}</p>
+                          <p style={{ color: entry.payload?.fill || '#3b82f6' }}>Ocorrências: <strong>{entry.value}</strong></p>
+                        </div>
+                      );
+                    }}
+                  />
                   <Legend
                     layout="vertical" verticalAlign="middle" align="right"
                     formatter={(val) => <span style={{ color: '#94a3b8', fontSize: '11px' }}>{val}</span>}
