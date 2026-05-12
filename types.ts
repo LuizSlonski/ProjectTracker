@@ -72,6 +72,7 @@ export interface User {
   password: string; // In a real app, this should be hashed. Storing plain for local prototype.
   name: string;
   role: UserRole;
+  needsPasswordChange?: boolean;
 }
 
 export interface PauseRecord {

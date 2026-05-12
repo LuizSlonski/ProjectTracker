@@ -375,7 +375,10 @@ export const fetchUsers = async (): Promise<User[]> => {
   try {
     const { data, error } = await supabase.from('users').select('*');
     if (error) throw error;
-    return data || [];
+    return (data || []).map(u => ({
+      ...u,
+      needsPasswordChange: u.needs_password_change
+    })) as User[];
   } catch (error) {
     console.error("Failed to fetch users", error);
     return [];
@@ -400,7 +403,8 @@ export const registerUser = async (user: User): Promise<{ success: boolean; mess
       name: user.name,
       username: user.username,
       password: user.password,
-      role: user.role
+      role: user.role,
+      needs_password_change: true
     }]);
 
     if (error) {
@@ -425,9 +429,26 @@ export const authenticateUser = async (username: string, password: string): Prom
       .single();
 
     if (error || !data) return null;
-    return data as User;
+    return {
+      ...data,
+      needsPasswordChange: data.needs_password_change
+    } as User;
   } catch (error) {
     console.error("Auth error", error);
     return null;
+  }
+};
+
+export const updateUserPassword = async (userId: string, newPassword: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ password: newPassword, needs_password_change: false })
+      .eq('id', userId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Failed to update password", error);
+    return false;
   }
 };

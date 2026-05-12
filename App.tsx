@@ -9,6 +9,7 @@ import { ProjectHistory } from './components/ProjectHistory';
 import { UserManagement } from './components/UserManagement';
 import InnovationManager from './components/InnovationManager';
 import { Login } from './components/Login';
+import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { 
   fetchAppState, 
   addProject, 
@@ -267,6 +268,10 @@ const App: React.FC = () => {
 
   if (!currentUser) {
     return <Login onLogin={setCurrentUser} />;
+  }
+
+  if (currentUser.needsPasswordChange) {
+    return <ForcePasswordChange user={currentUser} onSuccess={setCurrentUser} />;
   }
 
   const NavItem = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => {
