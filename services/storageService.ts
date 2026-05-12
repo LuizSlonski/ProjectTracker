@@ -74,7 +74,9 @@ export const fetchAppState = async (): Promise<AppState> => {
       materialCost: Number(i.material_cost) || 0,
       totalCost: Number(i.total_cost) || 0,
       photos: i.photos || [],
-      peopleInvolved: Number(i.people_involved) || 1
+      peopleInvolved: Number(i.people_involved) || 1,
+      rootCause: i.root_cause || '',
+      correctiveAction: i.corrective_action || ''
     }));
 
     const innovations: InnovationRecord[] = (innovationsData || []).map((inv: any) => ({
@@ -183,7 +185,9 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
       material_cost: issue.materialCost,
       total_cost: issue.totalCost,
       photos: issue.photos,
-      people_involved: issue.peopleInvolved
+      people_involved: issue.peopleInvolved,
+      root_cause: issue.rootCause,
+      corrective_action: issue.correctiveAction
     }]);
 
     if (error) throw error;
@@ -209,7 +213,9 @@ export const updateIssue = async (issue: IssueRecord): Promise<AppState> => {
         material_cost: issue.materialCost,
         total_cost: issue.totalCost,
         photos: issue.photos,
-        people_involved: issue.peopleInvolved
+        people_involved: issue.peopleInvolved,
+        root_cause: issue.rootCause,
+        corrective_action: issue.correctiveAction
       })
       .eq('id', issue.id);
 

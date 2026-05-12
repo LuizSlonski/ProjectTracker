@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X, Edit2, Save, Upload, Clock, DollarSign, Users, Package } from 'lucide-react';
+import { Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X, Edit2, Save, Upload, Clock, DollarSign, Users, Package, FileText, Wrench, Target, CheckSquare, Square } from 'lucide-react';
 import { AppState, IssueType, User, IssueRecord } from '../types';
-import { ISSUE_TYPES } from '../constants';
+import { ISSUE_TYPES, ROOT_CAUSES } from '../constants';
 import { fetchUsers, updateIssue, uploadPhoto, deletePhotoFromBucket } from '../services/storageService';
+import logoImage from '../src/assets/logo.png';
 
 interface IssueHistoryProps {
   data: AppState;
@@ -24,6 +25,185 @@ const FL = ({ children }: { children: React.ReactNode }) => (
   </label>
 );
 
+const generatePdfReport = async (issues: IssueRecord[], usersMap: Record<string, string>) => {
+  let base64Logo = logoImage;
+  try {
+    const res = await fetch(logoImage);
+    const blob = await res.blob();
+    base64Logo = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn('Could not load logo as base64', e);
+  }
+
+  const totalCost = issues.reduce((a, c) => a + (c.totalCost || 0), 0);
+  const totalTime = issues.reduce((a, c) => a + (c.timeSpent || 0), 0);
+  const totalPeople = issues.reduce((a, c) => a + ((c.timeSpent || 0) * (c.peopleInvolved || 1)), 0) / 60;
+  const now = new Date().toLocaleString('pt-BR');
+  const dateRange = issues.length > 0
+    ? `${new Date(issues[issues.length - 1].date).toLocaleDateString('pt-BR')} a ${new Date(issues[0].date).toLocaleDateString('pt-BR')}`
+    : 'N/A';
+
+  // Count by type
+  const byType: Record<string, number> = {};
+  const costByType: Record<string, number> = {};
+  const byRootCause: Record<string, number> = {};
+  issues.forEach(i => {
+    byType[i.type] = (byType[i.type] || 0) + 1;
+    costByType[i.type] = (costByType[i.type] || 0) + (i.totalCost || 0);
+    if (i.rootCause) byRootCause[i.rootCause] = (byRootCause[i.rootCause] || 0) + 1;
+  });
+
+  const sortedTypes = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  const sortedRootCauses = Object.entries(byRootCause).sort((a, b) => b[1] - a[1]);
+
+  const issueRows = issues.map(i => `
+    <tr>
+      <td>${new Date(i.date).toLocaleDateString('pt-BR')}</td>
+      <td><strong>${i.projectNs}</strong></td>
+      <td>${i.type}</td>
+      <td style="max-width:220px">${i.description}</td>
+      <td>${i.rootCause || '-'}</td>
+      <td style="max-width:180px">${i.correctiveAction || '-'}</td>
+      <td style="text-align:center">${i.timeSpent || 0}m</td>
+      <td style="text-align:center">${i.peopleInvolved || 1}</td>
+      <td style="text-align:right;font-weight:600">${fmtCurrency(i.totalCost || 0)}</td>
+      <td>${usersMap[i.reportedBy || ''] || i.reportedBy || '-'}</td>
+    </tr>
+  `).join('');
+
+  const typeRows = sortedTypes.map(([type, count]) => `
+    <tr>
+      <td>${type}</td>
+      <td style="text-align:center">${count}</td>
+      <td style="text-align:center">${((count / issues.length) * 100).toFixed(1)}%</td>
+      <td style="text-align:right">${fmtCurrency(costByType[type] || 0)}</td>
+    </tr>
+  `).join('');
+
+  const rootCauseRows = sortedRootCauses.length > 0 ? sortedRootCauses.map(([cause, count]) => `
+    <tr>
+      <td>${cause}</td>
+      <td style="text-align:center">${count}</td>
+      <td style="text-align:center">${((count / issues.length) * 100).toFixed(1)}%</td>
+    </tr>
+  `).join('') : '<tr><td colspan="3" style="text-align:center;color:#999">Nenhuma causa raiz registrada</td></tr>';
+
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Ocorrências - QualityTracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; font-size: 11px; line-height: 1.5; padding: 20px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; background-color: #0f172a; padding: 20px; border-radius: 8px; margin-bottom: 20px; color: #f8fafc; }
+  .header h1 { font-size: 22px; color: #ffffff; font-weight: 800; margin-bottom: 2px; }
+  .header .subtitle { font-size: 12px; color: #94a3b8; }
+  .header .meta { text-align: right; font-size: 10px; color: #94a3b8; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: #f1f5f9; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #e2e8f0; }
+  .kpi .value { font-size: 20px; font-weight: 800; color: #1e293b; }
+  .kpi .label { font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 600; letter-spacing: 0.08em; margin-top: 2px; }
+  .section-title { font-size: 13px; font-weight: 700; color: #1e293b; margin: 18px 0 8px; padding: 6px 10px; background: #e2e8f0; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10px; }
+  th { background: #1e293b; color: white; padding: 6px 8px; text-align: left; font-weight: 600; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .footer { margin-top: 24px; padding-top: 12px; border-top: 2px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; }
+  @media print {
+    body { padding: 0; }
+    .no-print { display: none !important; }
+    @page { margin: 12mm; size: A4 landscape; }
+  }
+</style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()" style="position:fixed;top:16px;right:16px;padding:10px 24px;background:#1e40af;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;z-index:100">
+    🖨️ Imprimir / Salvar PDF
+  </button>
+
+  <div class="header">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <img src="${base64Logo}" alt="Joinville Implementos" style="height: 48px; object-fit: contain;" />
+      <div>
+        <h1>📋 Relatório de Ocorrências de Qualidade</h1>
+        <div class="subtitle">Período: ${dateRange} • Total: ${issues.length} ocorrência(s)</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div>Gerado em: ${now}</div>
+      <div>QualityTracker</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="value">${issues.length}</div><div class="label">Total Ocorrências</div></div>
+    <div class="kpi"><div class="value" style="color:#dc2626">${fmtCurrency(totalCost)}</div><div class="label">Custo Total de Retrabalho</div></div>
+    <div class="kpi"><div class="value">${totalTime >= 60 ? Math.floor(totalTime / 60) + 'h ' + (totalTime % 60) + 'm' : totalTime + 'm'}</div><div class="label">Tempo Total de Retrabalho</div></div>
+    <div class="kpi"><div class="value">${totalPeople.toFixed(1)}h</div><div class="label">Pessoas-Hora</div></div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="section-title">📊 Ocorrências por Área</div>
+      <table>
+        <thead><tr><th>Área</th><th style="text-align:center">Qtde</th><th style="text-align:center">%</th><th style="text-align:right">Custo</th></tr></thead>
+        <tbody>${typeRows}</tbody>
+      </table>
+    </div>
+    <div>
+      <div class="section-title">🎯 Análise de Causa Raiz (6M)</div>
+      <table>
+        <thead><tr><th>Causa</th><th style="text-align:center">Qtde</th><th style="text-align:center">%</th></tr></thead>
+        <tbody>${rootCauseRows}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-title">📝 Detalhamento das Ocorrências</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th><th>NS</th><th>Área</th><th>Descrição</th><th>Causa Raiz</th><th>Ação Corretiva</th><th style="text-align:center">Tempo</th><th style="text-align:center">Pessoas</th><th style="text-align:right">Custo</th><th>Reportado por</th>
+      </tr>
+    </thead>
+    <tbody>${issueRows}</tbody>
+    <tfoot>
+      <tr style="background:#1e293b;color:white;font-weight:700">
+        <td colspan="6" style="border:none">TOTAL</td>
+        <td style="text-align:center;border:none">${totalTime}m</td>
+        <td style="border:none"></td>
+        <td style="text-align:right;border:none">${fmtCurrency(totalCost)}</td>
+        <td style="border:none"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="footer">
+    <span>Relatório gerado automaticamente pelo QualityTracker</span>
+    <span>Página 1</span>
+  </div>
+</body>
+</html>`;
+
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+    // Use a small timeout to ensure rendering is complete before print is fully ready
+    setTimeout(() => {
+      // We still rely on the user clicking the button to print, 
+      // but this ensures everything is definitely parsed.
+    }, 100);
+  }
+};
+
 export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, onDelete, onUpdate }) => {
   const [filterNs, setFilterNs] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -35,12 +215,30 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   const [editForm, setEditForm] = useState<Partial<IssueRecord>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchUsers().then(users => {
       setUsersMap(users.reduce((acc, u) => ({ ...acc, [u.id]: u.name }), {} as Record<string, string>));
     });
   }, []);
+
+  const toggleSelection = (id: string) => {
+    setSelectedIssues(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIssues.size === filteredIssues.length && filteredIssues.length > 0) {
+      setSelectedIssues(new Set());
+    } else {
+      setSelectedIssues(new Set(filteredIssues.map(i => i.id)));
+    }
+  };
 
   const filteredIssues = useMemo(() => {
     return data.issues.filter(issue => {
@@ -161,6 +359,30 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
         </div>
       </div>
 
+      {/* PDF Export and Selection */}
+      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button onClick={toggleSelectAll} style={{
+          display: 'flex', alignItems: 'center', gap: '0.4rem',
+          padding: '0.6rem 1rem', borderRadius: '0.75rem', fontSize: '0.8125rem', fontWeight: 600,
+          background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)',
+          color: '#60a5fa', cursor: 'pointer', transition: 'all 0.15s',
+        }}>
+          {selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? <CheckSquare style={{ width: '0.875rem', height: '0.875rem' }} /> : <Square style={{ width: '0.875rem', height: '0.875rem' }} />}
+          {selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+        </button>
+        <button onClick={() => generatePdfReport(selectedIssues.size > 0 ? filteredIssues.filter(i => selectedIssues.has(i.id)) : filteredIssues, usersMap)} style={{
+          display: 'flex', alignItems: 'center', gap: '0.4rem',
+          padding: '0.6rem 1rem', borderRadius: '0.75rem', fontSize: '0.8125rem', fontWeight: 600,
+          background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
+          color: '#f87171', cursor: 'pointer', transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}>
+          <FileText style={{ width: '0.875rem', height: '0.875rem' }} />
+          Gerar Relatório PDF ({selectedIssues.size > 0 ? selectedIssues.size : filteredIssues.length})
+        </button>
+      </div>
+
       {/* Counter */}
       {filteredIssues.length > 0 && (
         <p style={{ fontSize: '0.75rem', color: '#475569', margin: 0, paddingLeft: '0.25rem' }}>
@@ -247,6 +469,20 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                       {fmtCurrency(editForm.totalCost || 0)}
                     </span>
                   </div>
+                  <div>
+                    <FL>Causa Raiz (6M)</FL>
+                    <select value={editForm.rootCause || ''} onChange={e => handleEditChange('rootCause', e.target.value)}
+                      className="dark-select" style={inputStyle}>
+                      <option value="">Selecionar causa...</option>
+                      {ROOT_CAUSES.map(rc => <option key={rc} value={rc}>{rc}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <FL>Ação Corretiva</FL>
+                    <textarea value={editForm.correctiveAction || ''} onChange={e => handleEditChange('correctiveAction', e.target.value)}
+                      placeholder="Descreva a ação corretiva..."
+                      className="dark-input" style={{ ...inputStyle, height: '4rem', resize: 'vertical', fontFamily: 'inherit' }} />
+                  </div>
 
                   {/* Photos */}
                   <div style={{ gridColumn: '1 / -1' }}>
@@ -288,6 +524,9 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               <>
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.875rem', paddingRight: isGestor ? '5rem' : '0' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                    <button onClick={() => toggleSelection(issue.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: selectedIssues.has(issue.id) ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center', marginRight: '0.25rem' }}>
+                      {selectedIssues.has(issue.id) ? <CheckSquare style={{ width: '1.25rem', height: '1.25rem' }} /> : <Square style={{ width: '1.25rem', height: '1.25rem' }} />}
+                    </button>
                     <span style={{ padding: '0.25rem 0.625rem', borderRadius: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       {issue.type}
                     </span>
@@ -334,6 +573,28 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                         {fmtCurrency(issue.totalCost || 0)}
                       </span>
                     </div>
+                  </div>
+                )}
+
+                {/* Root Cause & Corrective Action */}
+                {(issue.rootCause || issue.correctiveAction) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(30,41,59,0.7)' }}>
+                    {issue.rootCause && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Target style={{ width: '0.75rem', height: '0.75rem', color: '#eab308', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.625rem', color: '#eab308', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Causa Raiz:</span>
+                        <span style={{ fontSize: '0.8125rem', color: '#fde68a', fontWeight: 600, background: 'rgba(234,179,8,0.1)', padding: '0.125rem 0.5rem', borderRadius: '0.375rem', border: '1px solid rgba(234,179,8,0.2)' }}>{issue.rootCause}</span>
+                      </div>
+                    )}
+                    {issue.correctiveAction && (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Wrench style={{ width: '0.75rem', height: '0.75rem', color: '#22c55e', flexShrink: 0, marginTop: '0.125rem' }} />
+                        <div>
+                          <span style={{ fontSize: '0.625rem', color: '#22c55e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '0.125rem' }}>Ação Corretiva:</span>
+                          <span style={{ fontSize: '0.8125rem', color: '#86efac', lineHeight: 1.5 }}>{issue.correctiveAction}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -1,5 +1,5 @@
 
-import { ProjectType, IssueType, ImplementType } from './types';
+import { ProjectType, IssueType, ImplementType, RootCause } from './types';
 
 export const PROJECT_TYPES = [
   ProjectType.RELEASE,
@@ -59,3 +59,12 @@ export const ISSUE_TYPES = [
 ];
 
 export const STORAGE_KEY = 'design_track_pro_data';
+
+export const ROOT_CAUSES = [
+  RootCause.METODO,
+  RootCause.MATERIAL,
+  RootCause.MAO_DE_OBRA,
+  RootCause.MAQUINA,
+  RootCause.MEIO_AMBIENTE,
+  RootCause.MEDICAO
+];

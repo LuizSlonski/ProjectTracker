@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { AlertTriangle, Plus, X, Camera, Users, Clock, DollarSign, Package } from 'lucide-react';
-import { IssueType, IssueRecord } from '../types';
-import { ISSUE_TYPES } from '../constants';
+import { IssueType, IssueRecord, RootCause } from '../types';
+import { ISSUE_TYPES, ROOT_CAUSES } from '../constants';
 import { uploadPhoto } from '../services/storageService';
 
 const HOURLY_RATES: Partial<Record<IssueType, number>> = {
@@ -69,6 +69,8 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
   const [peopleInvolved, setPeopleInvolved] = useState(1);
   const [photos, setPhotos] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [rootCause, setRootCause] = useState('');
+  const [correctiveAction, setCorrectiveAction] = useState('');
 
   const handleTypeChange = (newType: IssueType) => {
     setType(newType);
@@ -97,11 +99,14 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
       id: crypto.randomUUID(), projectNs: ns, type, description,
       date: new Date().toISOString(), timeSpent, hourlyRate,
       materialCost, peopleInvolved, totalCost: calculateTotal(), photos,
+      rootCause: rootCause || undefined,
+      correctiveAction: correctiveAction || undefined,
     };
     try {
       await onReport(newIssue);
       setNs(''); setDescription(''); setTimeSpent(0); setHourlyRate(0);
       setMaterialCost(0); setPeopleInvolved(1); setPhotos([]);
+      setRootCause(''); setCorrectiveAction('');
     } catch (error: any) {
       if (error.message?.includes('column') || error.message?.includes('does not exist')) {
         alert('Erro: Colunas ausentes no banco de dados. Execute o script de atualização SQL no Supabase.');
@@ -162,6 +167,31 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             className="dark-input"
             style={{ width: '100%', boxSizing: 'border-box', padding: '0.75rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit' }}
           />
+        </div>
+
+        {/* Root Cause + Corrective Action */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div>
+            <FieldLabel>Causa Raiz (6M)</FieldLabel>
+            <select
+              value={rootCause} onChange={e => setRootCause(e.target.value)}
+              className="dark-select"
+              style={{ width: '100%', padding: '0.65rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem' }}
+            >
+              <option value="">Selecionar causa...</option>
+              {ROOT_CAUSES.map(rc => <option key={rc} value={rc}>{rc}</option>)}
+            </select>
+          </div>
+          <div>
+            <FieldLabel>Ação Corretiva</FieldLabel>
+            <textarea
+              value={correctiveAction} onChange={e => setCorrectiveAction(e.target.value)}
+              placeholder="Descreva a ação tomada para corrigir..."
+              className="dark-input"
+              rows={2}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit' }}
+            />
+          </div>
         </div>
 
         {/* Photos */}

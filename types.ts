@@ -55,6 +55,15 @@ export enum CalculationType {
   ONE_TIME = 'Valor Único / Fixo'
 }
 
+export enum RootCause {
+  METODO = 'Método',
+  MATERIAL = 'Material',
+  MAO_DE_OBRA = 'Mão de Obra',
+  MAQUINA = 'Máquina',
+  MEIO_AMBIENTE = 'Meio Ambiente',
+  MEDICAO = 'Medição'
+}
+
 export type UserRole = 'GESTOR' | 'PROJETISTA' | 'CEO' | 'QUALIDADE' | 'PROCESSOS' | 'GESTOR_QUALIDADE';
 
 export interface User {
@@ -114,6 +123,10 @@ export interface IssueRecord {
   
   photos?: string[]; // Array of base64 strings
   peopleInvolved?: number; // Number of people involved in the rework
+  
+  // Quality Management Fields
+  rootCause?: string; // Ishikawa 6M category
+  correctiveAction?: string; // What was done to fix it
 }
 
 export interface InnovationRecord {
