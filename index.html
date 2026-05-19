@@ -9,6 +9,45 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <script>
+      // Gerador dinâmico de ícone para iOS (evita fundo preto e mantém proporção)
+      (function() {
+        const img = new Image();
+        img.src = '/logo.png';
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          canvas.width = 192;
+          canvas.height = 192;
+          const ctx = canvas.getContext('2d');
+          
+          // Fundo sólido com a cor tema slate-950
+          ctx.fillStyle = '#020617';
+          ctx.fillRect(0, 0, 192, 192);
+          
+          // Centraliza o logo com 25% de margem interna
+          const padding = 44;
+          const size = 192 - (padding * 2);
+          const ratio = img.width / img.height;
+          let w = size;
+          let h = size;
+          if (ratio > 1) {
+            h = size / ratio;
+          } else {
+            w = size * ratio;
+          }
+          const x = (192 - w) / 2;
+          const y = (192 - h) / 2;
+          
+          ctx.drawImage(img, x, y, w, h);
+          
+          // Atualiza o link do apple-touch-icon no DOM
+          const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+          if (appleLink) {
+            appleLink.href = canvas.toDataURL('image/png');
+          }
+        };
+      })();
+    </script>
     <link rel="icon" type="image/png" href="/logo.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
