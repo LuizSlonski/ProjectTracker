@@ -38,6 +38,25 @@ const S = {
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const truncateText = (text: string, length = 12) => {
+    if (!text) return '';
+    if (text.length <= length) return text;
+    return `${text.slice(0, length)}...`;
+  };
+
+  const cardStyle = useMemo(() => ({
+    ...S.card,
+    padding: isMobile ? '1rem' : '1.5rem',
+  }), [isMobile]);
+
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -121,13 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     return withTime.length > 0 ? Math.round(withTime.reduce((a, c) => a + (c.timeSpent || 0), 0) / withTime.length) : 0;
   }, [filteredIssues]);
 
-  const totalPeopleHours = useMemo(() => {
-    return filteredIssues.reduce((a, c) => {
-      const mins = c.timeSpent || 0;
-      const people = c.peopleInvolved || 1;
-      return a + (mins * people) / 60;
-    }, 0);
-  }, [filteredIssues]);
+
 
   const totalIssueCount = filteredIssues.length;
 
@@ -269,7 +282,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {/* Date filter bar */}
-      <div className="dash-card" style={{ ...S.card, padding: '1.25rem 1.5rem' }}>
+      <div className="dash-card" style={{ ...cardStyle, padding: '1.25rem 1.5rem' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#94a3b8', fontWeight: 600, fontSize: '0.875rem' }}>
             <Filter style={{ width: '1rem', height: '1rem', color: '#3b82f6' }} />
@@ -311,7 +324,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       {/* AI Analysis */}
       {aiAnalysis && (
         <div className="dash-card" style={{
-          ...S.card, border: '1px solid rgba(139,92,246,0.35)',
+          ...cardStyle, border: '1px solid rgba(139,92,246,0.35)',
           background: 'rgba(88,28,235,0.07)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.875rem' }}>
@@ -328,7 +341,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem' }}>
         {/* Rework cost */}
         <div className="dash-card" style={{
-          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderLeft: '3px solid rgba(239,68,68,0.6)',
         }}>
           <div>
@@ -344,7 +357,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
         {/* Rework time */}
         <div className="dash-card" style={{
-          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderLeft: '3px solid rgba(251,146,60,0.6)',
         }}>
           <div>
@@ -362,7 +375,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
         {/* Rework Rate */}
         <div className="dash-card" style={{
-          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderLeft: '3px solid rgba(168,85,247,0.6)',
         }}>
           <div>
@@ -378,7 +391,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
         {/* Avg Rework Cost */}
         <div className="dash-card" style={{
-          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderLeft: '3px solid rgba(236,72,153,0.6)',
         }}>
           <div>
@@ -394,7 +407,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
         {/* MTTR */}
         <div className="dash-card" style={{
-          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderLeft: '3px solid rgba(6,182,212,0.6)',
         }}>
           <div>
@@ -408,25 +421,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
           </div>
         </div>
 
-        {/* People-Hours */}
-        <div className="dash-card" style={{
-          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderLeft: '3px solid rgba(20,184,166,0.6)',
-        }}>
-          <div>
-            <p style={{ ...S.label, color: '#2dd4bf' }}>Pessoas-Hora</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#5eead4', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
-              {totalPeopleHours.toFixed(1)}h
-            </p>
-          </div>
-          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(20,184,166,0.12)' }}>
-            <Users style={{ width: '1.125rem', height: '1.125rem', color: '#14b8a6' }} />
-          </div>
-        </div>
 
         {/* Total Issues */}
         <div className="dash-card" style={{
-          ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderLeft: '3px solid rgba(99,102,241,0.6)',
         }}>
           <div>
@@ -446,7 +444,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.875rem' }}>
           {averageTimes.map((stat, i) => (
             <div key={stat.type} className={`dash-card delay-${i + 1}`} style={{
-              ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               borderLeft: '3px solid rgba(59,130,246,0.6)',
             }}>
               <div>
@@ -463,7 +461,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
           {/* Savings */}
           <div className="dash-card" style={{
-            ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             borderLeft: '3px solid rgba(34,197,94,0.6)',
           }}>
             <div>
@@ -483,7 +481,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
         {/* Rework time by area – bar chart */}
-        <div className="dash-card delay-2" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-2" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <Timer style={{ width: '1rem', height: '1rem', color: '#f97316' }} />
@@ -494,23 +492,51 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               <DatePicker value={reworkTimeByAreaDate.end} onChange={v => setReworkTimeByAreaDate(p => ({ ...p, end: v }))} label="Até" />
             </div>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {reworkTimeByAreaData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={reworkTimeByAreaData} layout="vertical" margin={{ left: 8, right: 24 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
-                  <XAxis
-                    type="number"
-                    tickFormatter={v => `${v}m`}
-                    tickLine={false} axisLine={false}
-                    style={{ fontSize: '10px', fill: '#64748b' }}
-                  />
-                  <YAxis
-                    dataKey="name" type="category" width={130}
-                    tickLine={false} axisLine={false}
-                    style={{ fontSize: '10px', fill: '#94a3b8' }}
-                  />
+                <BarChart 
+                  data={reworkTimeByAreaData} 
+                  layout={isMobile ? "horizontal" : "vertical"} 
+                  margin={isMobile ? { top: 15, right: 10, left: -20, bottom: 25 } : { left: 8, right: 24, top: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={!isMobile} vertical={isMobile} stroke="rgba(30,41,59,0.8)" />
+                  {isMobile ? (
+                    <>
+                      <XAxis
+                        dataKey="name"
+                        tickFormatter={(v) => truncateText(v, 8)}
+                        angle={-30}
+                        textAnchor="end"
+                        interval={0}
+                        style={{ fontSize: '9px', fill: '#94a3b8' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="number"
+                        tickFormatter={(v) => `${v}m`}
+                        style={{ fontSize: '9px', fill: '#64748b' }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <XAxis
+                        type="number"
+                        tickFormatter={v => `${v}m`}
+                        tickLine={false} axisLine={false}
+                        style={{ fontSize: '10px', fill: '#64748b' }}
+                      />
+                      <YAxis
+                        dataKey="name" type="category" width={130}
+                        tickLine={false} axisLine={false}
+                        style={{ fontSize: '10px', fill: '#94a3b8' }}
+                      />
+                    </>
+                  )}
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload, label }: any) => {
                       if (!active || !payload?.length) return null;
                       const mins = payload[0].value as number;
@@ -527,7 +553,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                     }}
                     cursor={{ fill: 'rgba(30,41,59,0.5)' }}
                   />
-                  <Bar dataKey="value" name="Tempo (min)" radius={[0, 6, 6, 0]} barSize={20}>
+                  <Bar dataKey="value" name="Tempo (min)" radius={isMobile ? [4, 4, 0, 0] : [0, 6, 6, 0]} barSize={isMobile ? 18 : 20}>
                     {reworkTimeByAreaData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
@@ -541,7 +567,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Cost by type – bar chart */}
-        <div className="dash-card delay-3" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-3" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <TrendingDown style={{ width: '1rem', height: '1rem', color: '#ef4444' }} />
@@ -552,23 +578,51 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               <DatePicker value={costChartDate.end} onChange={v => setCostChartDate(p => ({ ...p, end: v }))} label="Até" />
             </div>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {costByTypeData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={costByTypeData} layout="vertical" margin={{ left: 8, right: 24 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
-                  <XAxis
-                    type="number"
-                    tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`}
-                    tickLine={false} axisLine={false}
-                    style={{ fontSize: '10px', fill: '#64748b' }}
-                  />
-                  <YAxis
-                    dataKey="name" type="category" width={130}
-                    tickLine={false} axisLine={false}
-                    style={{ fontSize: '10px', fill: '#94a3b8' }}
-                  />
+                <BarChart 
+                  data={costByTypeData} 
+                  layout={isMobile ? "horizontal" : "vertical"} 
+                  margin={isMobile ? { top: 15, right: 10, left: -20, bottom: 25 } : { left: 8, right: 24, top: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={!isMobile} vertical={isMobile} stroke="rgba(30,41,59,0.8)" />
+                  {isMobile ? (
+                    <>
+                      <XAxis
+                        dataKey="name"
+                        tickFormatter={(v) => truncateText(v, 8)}
+                        angle={-30}
+                        textAnchor="end"
+                        interval={0}
+                        style={{ fontSize: '9px', fill: '#94a3b8' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="number"
+                        tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`}
+                        style={{ fontSize: '9px', fill: '#64748b' }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <XAxis
+                        type="number"
+                        tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`}
+                        tickLine={false} axisLine={false}
+                        style={{ fontSize: '10px', fill: '#64748b' }}
+                      />
+                      <YAxis
+                        dataKey="name" type="category" width={130}
+                        tickLine={false} axisLine={false}
+                        style={{ fontSize: '10px', fill: '#94a3b8' }}
+                      />
+                    </>
+                  )}
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload, label }: any) => {
                       if (!active || !payload?.length) return null;
                       const val = payload[0].value as number;
@@ -584,7 +638,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                     }}
                     cursor={{ fill: 'rgba(30,41,59,0.5)' }}
                   />
-                  <Bar dataKey="value" name="Custo" radius={[0, 6, 6, 0]} barSize={20}>
+                  <Bar dataKey="value" name="Custo" radius={isMobile ? [4, 4, 0, 0] : [0, 6, 6, 0]} barSize={isMobile ? 18 : 20}>
                     {costByTypeData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
@@ -598,7 +652,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Pie – issue distribution */}
-        <div className="dash-card delay-4" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-4" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <PieIcon style={{ width: '1rem', height: '1rem', color: '#3b82f6' }} />
@@ -609,16 +663,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               <DatePicker value={issuePieDate.end} onChange={v => setIssuePieDate(p => ({ ...p, end: v }))} label="Até" />
             </div>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} cx="45%" cy="50%" labelLine={false} outerRadius={110} dataKey="value">
+                <PieChart margin={isMobile ? { bottom: 20 } : undefined}>
+                  <Pie 
+                    data={pieData} 
+                    cx={isMobile ? "50%" : "45%"} 
+                    cy={isMobile ? "40%" : "50%"} 
+                    labelLine={false} 
+                    outerRadius={isMobile ? 85 : 110} 
+                    dataKey="value"
+                  >
                     {pieData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload }: any) => {
                       if (!active || !payload?.length) return null;
                       const entry = payload[0];
@@ -634,8 +696,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                     }}
                   />
                   <Legend
-                    layout="vertical" verticalAlign="middle" align="right"
-                    formatter={(val) => <span style={{ color: '#94a3b8', fontSize: '11px' }}>{val}</span>}
+                    layout={isMobile ? "horizontal" : "vertical"} 
+                    verticalAlign={isMobile ? "bottom" : "middle"} 
+                    align={isMobile ? "center" : "right"}
+                    formatter={(val) => <span style={{ color: '#94a3b8', fontSize: isMobile ? '10px' : '11px' }}>{val}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -646,21 +710,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Monthly Issue Trend – line chart */}
-        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-5" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <TrendingUp style={{ width: '1rem', height: '1rem', color: '#22c55e' }} />
               Tendência Mensal de Ocorrências
             </span>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {monthlyTrendData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyTrendData} margin={{ left: 8, right: 24, top: 8, bottom: 8 }}>
+                <LineChart 
+                  data={monthlyTrendData} 
+                  margin={isMobile ? { left: -20, right: 10, top: 15, bottom: 15 } : { left: 8, right: 24, top: 8, bottom: 8 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
-                  <YAxis tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
+                  <XAxis 
+                    dataKey="month" 
+                    tickLine={false} 
+                    axisLine={false} 
+                    style={{ fontSize: isMobile ? '8px' : '10px', fill: '#94a3b8' }} 
+                    angle={isMobile ? -25 : 0}
+                    textAnchor={isMobile ? "end" : "middle"}
+                  />
+                  <YAxis 
+                    tickLine={false} 
+                    axisLine={false} 
+                    style={{ fontSize: isMobile ? '8px' : '10px', fill: '#64748b' }} 
+                    allowDecimals={false} 
+                  />
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload, label }: any) => {
                       if (!active || !payload?.length) return null;
                       return (
@@ -681,21 +761,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Monthly Cost Trend – bar chart */}
-        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-5" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <DollarSign style={{ width: '1rem', height: '1rem', color: '#ef4444' }} />
               Custo de Retrabalho por Mês
             </span>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {monthlyCostData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyCostData} margin={{ left: 8, right: 24, top: 8, bottom: 8 }}>
+                <BarChart 
+                  data={monthlyCostData} 
+                  margin={isMobile ? { left: -20, right: 10, top: 15, bottom: 15 } : { left: 8, right: 24, top: 8, bottom: 8 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
-                  <YAxis tickLine={false} axisLine={false} tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} style={{ fontSize: '10px', fill: '#64748b' }} />
+                  <XAxis 
+                    dataKey="month" 
+                    tickLine={false} 
+                    axisLine={false} 
+                    style={{ fontSize: isMobile ? '8px' : '10px', fill: '#94a3b8' }} 
+                    angle={isMobile ? -25 : 0}
+                    textAnchor={isMobile ? "end" : "middle"}
+                  />
+                  <YAxis 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} 
+                    style={{ fontSize: isMobile ? '8px' : '10px', fill: '#64748b' }} 
+                  />
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload, label }: any) => {
                       if (!active || !payload?.length) return null;
                       return (
@@ -706,7 +802,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                       );
                     }}
                   />
-                  <Bar dataKey="cost" name="Custo" radius={[6, 6, 0, 0]} barSize={32}>
+                  <Bar dataKey="cost" name="Custo" radius={[6, 6, 0, 0]} barSize={isMobile ? 18 : 32}>
                     {monthlyCostData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
@@ -720,22 +816,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Pareto Analysis – composed chart */}
-        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-5" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <TrendingDown style={{ width: '1rem', height: '1rem', color: '#eab308' }} />
               Análise de Pareto
             </span>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {paretoData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={paretoData} margin={{ left: 8, right: 24, top: 8, bottom: 60 }}>
+                <ComposedChart 
+                  data={paretoData} 
+                  margin={isMobile ? { left: -20, right: 10, top: 15, bottom: 65 } : { left: 8, right: 24, top: 8, bottom: 60 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)" />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} style={{ fontSize: '9px', fill: '#94a3b8' }} angle={-35} textAnchor="end" interval={0} />
-                  <YAxis yAxisId="left" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
-                  <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} domain={[0, 100]} style={{ fontSize: '10px', fill: '#64748b' }} />
+                  <XAxis 
+                    dataKey="name" 
+                    tickLine={false} 
+                    axisLine={false} 
+                    style={{ fontSize: isMobile ? '8px' : '9px', fill: '#94a3b8' }} 
+                    angle={isMobile ? -30 : -35} 
+                    textAnchor="end" 
+                    interval={0} 
+                    tickFormatter={(v) => truncateText(v, isMobile ? 8 : 15)}
+                  />
+                  <YAxis yAxisId="left" tickLine={false} axisLine={false} style={{ fontSize: isMobile ? '8px' : '10px', fill: '#64748b' }} allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} domain={[0, 100]} style={{ fontSize: isMobile ? '8px' : '10px', fill: '#64748b' }} />
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload, label }: any) => {
                       if (!active || !payload?.length) return null;
                       return (
@@ -747,7 +856,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                       );
                     }}
                   />
-                  <Bar yAxisId="left" dataKey="value" name="Ocorrências" radius={[6, 6, 0, 0]} barSize={28}>
+                  <Bar yAxisId="left" dataKey="value" name="Ocorrências" radius={[6, 6, 0, 0]} barSize={isMobile ? 18 : 28}>
                     {paretoData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
@@ -762,21 +871,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Top NS Reincidentes – bar chart */}
-        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-5" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <Repeat style={{ width: '1rem', height: '1rem', color: '#f97316' }} />
               Top NS Reincidentes
             </span>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {topNsData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topNsData} layout="vertical" margin={{ left: 8, right: 24 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
-                  <XAxis type="number" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" width={130} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                <BarChart 
+                  data={topNsData} 
+                  layout={isMobile ? "horizontal" : "vertical"} 
+                  margin={isMobile ? { top: 15, right: 10, left: -20, bottom: 25 } : { left: 8, right: 24 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={!isMobile} vertical={isMobile} stroke="rgba(30,41,59,0.8)" />
+                  {isMobile ? (
+                    <>
+                      <XAxis
+                        dataKey="name"
+                        tickFormatter={(v) => truncateText(v, 8)}
+                        angle={-30}
+                        textAnchor="end"
+                        interval={0}
+                        style={{ fontSize: '9px', fill: '#94a3b8' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="number"
+                        style={{ fontSize: '9px', fill: '#64748b' }}
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <XAxis type="number" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
+                      <YAxis dataKey="name" type="category" width={130} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                    </>
+                  )}
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload, label }: any) => {
                       if (!active || !payload?.length) return null;
                       return (
@@ -788,7 +925,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                     }}
                     cursor={{ fill: 'rgba(30,41,59,0.5)' }}
                   />
-                  <Bar dataKey="value" name="Ocorrências" radius={[0, 6, 6, 0]} barSize={20}>
+                  <Bar dataKey="value" name="Ocorrências" radius={isMobile ? [4, 4, 0, 0] : [0, 6, 6, 0]} barSize={isMobile ? 18 : 20}>
                     {topNsData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
@@ -802,21 +939,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
 
         {/* Issues by Reporter – bar chart */}
-        <div className="dash-card delay-5" style={{ ...S.card, minHeight: '400px' }}>
+        <div className="dash-card delay-5" style={{ ...cardStyle, minHeight: isMobile ? '450px' : '400px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={S.sectionTitle}>
               <UserIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
               Ocorrências por Reportador
             </span>
           </div>
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: isMobile ? '350px' : '300px', width: '100%' }}>
             {issuesByReporterData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={issuesByReporterData} layout="vertical" margin={{ left: 8, right: 24 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(30,41,59,0.8)" />
-                  <XAxis type="number" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" width={130} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                <BarChart 
+                  data={issuesByReporterData} 
+                  layout={isMobile ? "horizontal" : "vertical"} 
+                  margin={isMobile ? { top: 15, right: 10, left: -20, bottom: 25 } : { left: 8, right: 24 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={!isMobile} vertical={isMobile} stroke="rgba(30,41,59,0.8)" />
+                  {isMobile ? (
+                    <>
+                      <XAxis
+                        dataKey="name"
+                        tickFormatter={(v) => truncateText(v, 8)}
+                        angle={-30}
+                        textAnchor="end"
+                        interval={0}
+                        style={{ fontSize: '9px', fill: '#94a3b8' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="number"
+                        style={{ fontSize: '9px', fill: '#64748b' }}
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <XAxis type="number" tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#64748b' }} allowDecimals={false} />
+                      <YAxis dataKey="name" type="category" width={130} tickLine={false} axisLine={false} style={{ fontSize: '10px', fill: '#94a3b8' }} />
+                    </>
+                  )}
                   <Tooltip
+                    trigger="click"
                     content={({ active, payload, label }: any) => {
                       if (!active || !payload?.length) return null;
                       return (
@@ -828,7 +993,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                     }}
                     cursor={{ fill: 'rgba(30,41,59,0.5)' }}
                   />
-                  <Bar dataKey="value" name="Reportados" radius={[0, 6, 6, 0]} barSize={20}>
+                  <Bar dataKey="value" name="Reportados" radius={isMobile ? [4, 4, 0, 0] : [0, 6, 6, 0]} barSize={isMobile ? 18 : 20}>
                     {issuesByReporterData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}

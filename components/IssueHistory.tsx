@@ -216,6 +216,14 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showMobileDates, setShowMobileDates] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     fetchUsers().then(users => {
@@ -303,7 +311,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
 
   const inputStyle: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
-    padding: '0.6rem 0.875rem', borderRadius: '0.75rem',
+    padding: '0.6rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem',
     background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(51,65,85,0.8)',
     color: 'white', fontSize: '0.875rem', outline: 'none',
   };
@@ -312,8 +320,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
       {/* Filters */}
-      <div style={{ background: 'rgba(10,18,35,0.75)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '1rem', padding: '1.25rem', backdropFilter: 'blur(8px)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.875rem' }}>
+      <div style={{ background: 'rgba(10,18,35,0.75)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '1rem', padding: isMobile ? '0.875rem' : '1.25rem', backdropFilter: 'blur(8px)' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.75rem', marginBottom: (!isMobile || showMobileDates) ? '0.875rem' : '0' }}>
           {/* Search */}
           <div style={{ position: 'relative', flex: '1 1 200px' }}>
             <Search style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', width: '0.875rem', height: '0.875rem', color: '#475569', pointerEvents: 'none' }} />
@@ -325,56 +333,85 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
             />
           </div>
           {/* Type filter */}
-          <select
-            value={filterType} onChange={e => setFilterType(e.target.value)}
-            className="dark-select"
-            style={{ ...inputStyle, flex: '1 1 180px', cursor: 'pointer' }}
-          >
-            <option value="">Todos os Tipos</option>
-            {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <div style={{ display: 'flex', gap: '0.5rem', width: '100%', flex: '1 1 180px' }}>
+            <select
+              value={filterType} onChange={e => setFilterType(e.target.value)}
+              className="dark-select"
+              style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}
+            >
+              <option value="">Todos os Tipos</option>
+              {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            
+            {isMobile && (
+              <button 
+                onClick={() => setShowMobileDates(!showMobileDates)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 0.875rem', minHeight: '48px', borderRadius: '0.75rem',
+                  background: showMobileDates ? 'rgba(59,130,246,0.2)' : 'rgba(30,41,59,0.6)',
+                  border: showMobileDates ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(51,65,85,0.6)',
+                  color: showMobileDates ? '#60a5fa' : '#94a3b8', cursor: 'pointer', transition: 'all 0.15s'
+                }}
+              >
+                <Calendar style={{ width: '1.125rem', height: '1.125rem' }} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Date filters */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', paddingTop: '0.875rem', borderTop: '1px solid rgba(30,41,59,0.9)' }}>
-          <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-            <Calendar style={{ width: '0.875rem', height: '0.875rem' }} /> Filtrar por data:
-          </span>
-          {[{ label: 'De', val: startDate, set: setStartDate }, { label: 'Até', val: endDate, set: setEndDate }].map(({ label, val, set }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.6875rem', color: '#64748b', fontWeight: 600 }}>{label}</span>
-              <input type="date" value={val} onChange={e => set(e.target.value)}
-                className="dark-input"
-                style={{ ...inputStyle, width: 'auto', padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
-              />
+        {(!isMobile || showMobileDates) && (
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row', 
+            gap: '0.75rem', 
+            alignItems: isMobile ? 'flex-start' : 'center', 
+            paddingTop: '0.875rem', 
+            borderTop: '1px solid rgba(30,41,59,0.9)',
+            width: '100%'
+          }}>
+            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+              <Calendar style={{ width: '0.875rem', height: '0.875rem' }} /> Filtrar por data:
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', width: '100%' }}>
+              {[{ label: 'De', val: startDate, set: setStartDate }, { label: 'Até', val: endDate, set: setEndDate }].map(({ label, val, set }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: isMobile ? '1 1 120px' : 'none' }}>
+                  <span style={{ fontSize: '0.6875rem', color: '#64748b', fontWeight: 600 }}>{label}</span>
+                  <input type="date" value={val} onChange={e => set(e.target.value)}
+                    className="dark-input"
+                    style={{ ...inputStyle, width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', minHeight: '36px' }}
+                  />
+                </div>
+              ))}
+              {(filterNs || filterType || startDate || endDate) && (
+                <button onClick={() => { setFilterNs(''); setFilterType(''); setStartDate(''); setEndDate(''); }}
+                  style={{ marginLeft: isMobile ? '0' : 'auto', marginTop: isMobile ? '0.25rem' : '0', fontSize: '0.75rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.5rem 0' }}
+                >
+                  <X style={{ width: '0.875rem', height: '0.875rem' }} /> Limpar Filtros
+                </button>
+              )}
             </div>
-          ))}
-          {(filterNs || filterType || startDate || endDate) && (
-            <button onClick={() => { setFilterNs(''); setFilterType(''); setStartDate(''); setEndDate(''); }}
-              style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#475569', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <X style={{ width: '0.875rem', height: '0.875rem' }} /> Limpar
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* PDF Export and Selection */}
-      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={toggleSelectAll} style={{
-          display: 'flex', alignItems: 'center', gap: '0.4rem',
-          padding: '0.6rem 1rem', borderRadius: '0.75rem', fontSize: '0.8125rem', fontWeight: 600,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+          padding: '0.6rem 1rem', minHeight: '44px', borderRadius: '0.75rem', fontSize: '0.8125rem', fontWeight: 600,
           background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)',
-          color: '#60a5fa', cursor: 'pointer', transition: 'all 0.15s',
+          color: '#60a5fa', cursor: 'pointer', transition: 'all 0.15s', flex: isMobile ? '1 1 100%' : '1 1 140px',
         }}>
           {selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? <CheckSquare style={{ width: '0.875rem', height: '0.875rem' }} /> : <Square style={{ width: '0.875rem', height: '0.875rem' }} />}
           {selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
         </button>
         <button onClick={() => generatePdfReport(selectedIssues.size > 0 ? filteredIssues.filter(i => selectedIssues.has(i.id)) : filteredIssues, usersMap)} style={{
-          display: 'flex', alignItems: 'center', gap: '0.4rem',
-          padding: '0.6rem 1rem', borderRadius: '0.75rem', fontSize: '0.8125rem', fontWeight: 600,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+          padding: '0.6rem 1rem', minHeight: '44px', borderRadius: '0.75rem', fontSize: '0.8125rem', fontWeight: 600,
           background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
-          color: '#f87171', cursor: 'pointer', transition: 'all 0.15s',
+          color: '#f87171', cursor: 'pointer', transition: 'all 0.15s', flex: isMobile ? '1 1 100%' : '1 1 140px',
         }}
         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; }}
         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}>
@@ -390,241 +427,385 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
         </p>
       )}
 
-      {/* Issue cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {filteredIssues.length > 0 ? filteredIssues.map((issue, idx) => (
-          <div key={issue.id} className={`dash-card delay-${Math.min(idx + 1, 5)}`} style={{
-            background: 'rgba(10,18,35,0.75)', border: '1px solid rgba(30,41,59,0.9)',
-            borderRadius: '1rem', padding: '1.25rem', backdropFilter: 'blur(8px)',
-            borderLeft: '3px solid rgba(239,68,68,0.5)', position: 'relative',
-          }}>
-
-            {/* Gestor actions */}
-            {isGestor && editingIssueId !== issue.id && (
-              <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.375rem', zIndex: 1 }}>
-                <button onClick={() => startEditing(issue)} style={{ padding: '0.375rem', borderRadius: '0.5rem', background: 'none', border: '1px solid rgba(51,65,85,0.6)', color: '#64748b', cursor: 'pointer', display: 'flex', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.5)'; e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = 'rgba(51,65,85,0.6)'; e.currentTarget.style.background = 'none'; }}>
-                  <Edit2 style={{ width: '0.875rem', height: '0.875rem' }} />
-                </button>
-                <button onClick={() => onDelete?.(issue.id)} style={{ padding: '0.375rem', borderRadius: '0.5rem', background: 'none', border: '1px solid rgba(51,65,85,0.6)', color: '#64748b', cursor: 'pointer', display: 'flex', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.5)'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = 'rgba(51,65,85,0.6)'; e.currentTarget.style.background = 'none'; }}>
-                  <Trash2 style={{ width: '0.875rem', height: '0.875rem' }} />
-                </button>
-              </div>
-            )}
-
-            {editingIssueId === issue.id ? (
-              /* ── EDIT MODE ── */
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'white' }}>Editar Ocorrência</h3>
-                  <button onClick={cancelEditing} style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
-                    <X style={{ width: '1.125rem', height: '1.125rem' }} />
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem' }}>
-                  <div>
-                    <FL>NS do Projeto</FL>
-                    <input type="text" value={editForm.projectNs || ''} onChange={e => handleEditChange('projectNs', e.target.value)}
-                      className="dark-input" style={inputStyle} />
-                  </div>
-                  <div>
-                    <FL>Tipo de Erro</FL>
-                    <select value={editForm.type || ''} onChange={e => handleEditChange('type', e.target.value)}
-                      className="dark-select" style={inputStyle}>
-                      {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <FL>Descrição</FL>
-                    <textarea value={editForm.description || ''} onChange={e => handleEditChange('description', e.target.value)}
-                      className="dark-input" style={{ ...inputStyle, height: '5rem', resize: 'vertical', fontFamily: 'inherit' }} />
-                  </div>
-                  <div>
-                    <FL>Tempo (min)</FL>
-                    <input type="number" value={editForm.timeSpent || 0} onChange={e => handleEditChange('timeSpent', Number(e.target.value))}
-                      className="dark-input" style={inputStyle} />
-                  </div>
-                  <div>
-                    <FL>Custo/Hora (R$)</FL>
-                    <input type="number" value={editForm.hourlyRate || 0} onChange={e => handleEditChange('hourlyRate', Number(e.target.value))}
-                      className="dark-input" style={inputStyle} />
-                  </div>
-                  <div>
-                    <FL>Pessoas</FL>
-                    <input type="number" min="1" value={editForm.peopleInvolved || 1} onChange={e => handleEditChange('peopleInvolved', Number(e.target.value))}
-                      className="dark-input" style={inputStyle} />
-                  </div>
-                  <div>
-                    <FL>Material (R$)</FL>
-                    <input type="number" value={editForm.materialCost || 0} onChange={e => handleEditChange('materialCost', Number(e.target.value))}
-                      className="dark-input" style={inputStyle} />
-                  </div>
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(2,6,23,0.6)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.75rem', padding: '0.875rem 1rem' }}>
-                    <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Custo Total</span>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f87171', fontFamily: "'DM Mono', monospace" }}>
-                      {fmtCurrency(editForm.totalCost || 0)}
-                    </span>
-                  </div>
-                  <div>
-                    <FL>Causa Raiz (6M)</FL>
-                    <select value={editForm.rootCause || ''} onChange={e => handleEditChange('rootCause', e.target.value)}
-                      className="dark-select" style={inputStyle}>
-                      <option value="">Selecionar causa...</option>
-                      {ROOT_CAUSES.map(rc => <option key={rc} value={rc}>{rc}</option>)}
-                    </select>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <FL>Ação Corretiva</FL>
-                    <textarea value={editForm.correctiveAction || ''} onChange={e => handleEditChange('correctiveAction', e.target.value)}
-                      placeholder="Descreva a ação corretiva..."
-                      className="dark-input" style={{ ...inputStyle, height: '4rem', resize: 'vertical', fontFamily: 'inherit' }} />
-                  </div>
-
-                  {/* Photos */}
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <FL>Evidências</FL>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {editForm.photos?.map((photo, idx) => (
-                        <div key={idx} style={{ position: 'relative', width: '4rem', height: '4rem', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid rgba(30,41,59,0.9)' }}>
-                          <img src={photo} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <button type="button" onClick={() => removePhoto(idx)} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '0.25rem', color: 'white', width: '1.125rem', height: '1.125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                            <X style={{ width: '0.625rem', height: '0.625rem' }} />
+      {/* ── DESKTOP VIEW (TABLE) ── */}
+      {!isMobile && (
+        <div style={{ background: 'rgba(10,18,35,0.75)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '1rem', overflow: 'hidden', backdropFilter: 'blur(8px)' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', color: '#cbd5e1' }}>
+              <thead>
+                <tr style={{ background: 'rgba(15,23,42,0.9)', borderBottom: '1px solid rgba(30,41,59,0.9)', color: '#94a3b8' }}>
+                  <th style={{ padding: '1rem 0.75rem', width: '40px', textAlign: 'center' }}>
+                    <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? '#3b82f6' : '#64748b', display: 'inline-flex', alignItems: 'center' }}>
+                      {selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? <CheckSquare style={{ width: '1.125rem', height: '1.125rem' }} /> : <Square style={{ width: '1.125rem', height: '1.125rem' }} />}
+                    </button>
+                  </th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Tipo / Área</th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>NS</th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Data</th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'left', fontWeight: 600, maxWidth: '250px' }}>Descrição</th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Causa Raiz & Ação</th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Recursos</th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Custo Total</th>
+                  <th style={{ padding: '1rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Evidências</th>
+                  {isGestor && <th style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 600, width: '100px' }}>Ações</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredIssues.length > 0 ? filteredIssues.map((issue) => (
+                  <tr key={issue.id} style={{ borderBottom: '1px solid rgba(30,41,59,0.5)', verticalAlign: 'top' }} className="hover:bg-slate-900/40 transition-colors duration-150">
+                    {/* Checkbox */}
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                      <button onClick={() => toggleSelection(issue.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: selectedIssues.has(issue.id) ? '#3b82f6' : '#64748b', display: 'inline-flex', alignItems: 'center' }}>
+                        {selectedIssues.has(issue.id) ? <CheckSquare style={{ width: '1.125rem', height: '1.125rem' }} /> : <Square style={{ width: '1.125rem', height: '1.125rem' }} />}
+                      </button>
+                    </td>
+                    {/* Tipo / Área */}
+                    <td style={{ padding: '1rem 0.75rem', verticalAlign: 'middle' }}>
+                      <span style={{ padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem', fontWeight: 700, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-block' }}>
+                        {issue.type}
+                      </span>
+                    </td>
+                    {/* NS */}
+                    <td style={{ padding: '1rem 0.75rem', fontFamily: "'DM Mono', monospace", fontWeight: 700, color: 'white', verticalAlign: 'middle' }}>
+                      {issue.projectNs}
+                    </td>
+                    {/* Data */}
+                    <td style={{ padding: '1rem 0.75rem', color: '#64748b', fontSize: '0.75rem', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Calendar style={{ width: '0.75rem', height: '0.75rem' }} />
+                        {fmtDate(issue.date).split(',')[0]}
+                      </div>
+                      {isGestor && issue.reportedBy && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#475569', fontSize: '0.6875rem', marginTop: '0.25rem' }}>
+                          <UserIcon style={{ width: '0.6875rem', height: '0.6875rem' }} />
+                          {usersMap[issue.reportedBy] || 'Desconhecido'}
+                        </div>
+                      )}
+                    </td>
+                    {/* Descrição */}
+                    <td style={{ padding: '1rem 0.75rem', maxWidth: '250px', color: '#cbd5e1', lineHeight: 1.5 }}>
+                      {issue.description}
+                    </td>
+                    {/* Causa Raiz & Ação */}
+                    <td style={{ padding: '1rem 0.75rem', fontSize: '0.75rem' }}>
+                      {issue.rootCause && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.375rem' }}>
+                          <Target style={{ width: '0.75rem', height: '0.75rem', color: '#eab308', flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.6875rem', color: '#fde68a', fontWeight: 600, background: 'rgba(234,179,8,0.1)', padding: '0.1rem 0.3rem', borderRadius: '0.25rem', border: '1px solid rgba(234,179,8,0.2)' }}>{issue.rootCause}</span>
+                        </div>
+                      )}
+                      {issue.correctiveAction && (
+                        <div style={{ display: 'flex', gap: '0.25rem', color: '#86efac' }}>
+                          <Wrench style={{ width: '0.6875rem', height: '0.6875rem', color: '#22c55e', flexShrink: 0, marginTop: '0.1rem' }} />
+                          <span style={{ fontSize: '0.75rem', lineHeight: 1.3 }}>{issue.correctiveAction}</span>
+                        </div>
+                      )}
+                      {!issue.rootCause && !issue.correctiveAction && <span style={{ color: '#475569' }}>-</span>}
+                    </td>
+                    {/* Recursos */}
+                    <td style={{ padding: '1rem 0.75rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.25rem' }} title="Tempo de retrabalho">
+                        <Clock style={{ width: '0.6875rem', height: '0.6875rem', color: '#64748b' }} /> {issue.timeSpent || 0}m
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.25rem' }} title="Pessoas envolvidas">
+                        <Users style={{ width: '0.6875rem', height: '0.6875rem', color: '#64748b' }} /> {issue.peopleInvolved || 1}
+                      </div>
+                      {issue.materialCost > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }} title="Custo de material">
+                          <Package style={{ width: '0.6875rem', height: '0.6875rem', color: '#64748b' }} /> {fmtCurrency(issue.materialCost)}
+                        </div>
+                      )}
+                    </td>
+                    {/* Custo Total */}
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#f87171', fontFamily: "'DM Mono', monospace", fontSize: '0.875rem', verticalAlign: 'middle' }}>
+                      {fmtCurrency(issue.totalCost || 0)}
+                    </td>
+                    {/* Evidências */}
+                    <td style={{ padding: '1rem 0.75rem', verticalAlign: 'middle' }}>
+                      {issue.photos && issue.photos.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          {issue.photos.slice(0, 3).map((photo, idx) => (
+                            <img key={idx} src={photo} alt="evidencia"
+                              onClick={() => setSelectedImage(photo)}
+                              style={{ width: '1.75rem', height: '1.75rem', objectFit: 'cover', borderRadius: '0.25rem', border: '1px solid rgba(30,41,59,0.9)', cursor: 'pointer' }}
+                            />
+                          ))}
+                          {issue.photos.length > 3 && (
+                            <span style={{ fontSize: '0.625rem', color: '#64748b', alignSelf: 'center', marginLeft: '0.125rem' }}>
+                              +{issue.photos.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      ) : <span style={{ color: '#475569' }}>-</span>}
+                    </td>
+                    {/* Ações */}
+                    {isGestor && (
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.25rem' }}>
+                          <button onClick={() => startEditing(issue)} style={{ padding: '0.375rem', borderRadius: '0.375rem', background: 'none', border: '1px solid rgba(51,65,85,0.6)', color: '#64748b', cursor: 'pointer', display: 'flex' }} title="Editar">
+                            <Edit2 style={{ width: '0.75rem', height: '0.75rem' }} />
+                          </button>
+                          <button onClick={() => onDelete?.(issue.id)} style={{ padding: '0.375rem', borderRadius: '0.375rem', background: 'none', border: '1px solid rgba(51,65,85,0.6)', color: '#64748b', cursor: 'pointer', display: 'flex' }} title="Excluir">
+                            <Trash2 style={{ width: '0.75rem', height: '0.75rem' }} />
                           </button>
                         </div>
-                      ))}
-                      <label style={{ width: '4rem', height: '4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(51,65,85,0.9)', borderRadius: '0.5rem', cursor: 'pointer', color: '#475569', transition: 'all 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.5)'; e.currentTarget.style.color = '#60a5fa'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(51,65,85,0.9)'; e.currentTarget.style.color = '#475569'; }}>
-                        <Upload style={{ width: '1rem', height: '1rem' }} />
-                        <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleFileChange} disabled={isUploading} />
-                      </label>
-                    </div>
-                    {isUploading && <p style={{ fontSize: '0.75rem', color: '#3b82f6', marginTop: '0.375rem' }}>Processando...</p>}
-                  </div>
-                </div>
+                      </td>
+                    )}
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={isGestor ? 10 : 9} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#475569' }}>
+                      Nenhum problema encontrado com os filtros atuais.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.625rem', marginTop: '1rem' }}>
-                  <button onClick={cancelEditing} style={{ padding: '0.5rem 1rem', borderRadius: '0.625rem', background: 'none', border: '1px solid rgba(51,65,85,0.8)', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Cancelar
+      {/* ── MOBILE VIEW (CARDS LIST) ── */}
+      {isMobile && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {filteredIssues.length > 0 ? filteredIssues.map((issue, idx) => (
+            <div key={issue.id} className={`dash-card delay-${Math.min(idx + 1, 5)}`} style={{
+              background: 'rgba(10,18,35,0.75)', border: '1px solid rgba(30,41,59,0.9)',
+              borderRadius: '1rem', padding: '1rem', backdropFilter: 'blur(8px)',
+              borderLeft: '3px solid rgba(239,68,68,0.5)', position: 'relative',
+            }}>
+              {/* Actions at top-right for mobile view */}
+              {isGestor && (
+                <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', display: 'flex', gap: '0.375rem', zIndex: 1 }}>
+                  <button onClick={() => startEditing(issue)} style={{ padding: '0.5rem', minWidth: '36px', minHeight: '36px', justifyContent: 'center', alignItems: 'center', borderRadius: '0.5rem', background: 'rgba(30,41,59,0.3)', border: '1px solid rgba(51,65,85,0.6)', color: '#94a3b8', cursor: 'pointer', display: 'flex', transition: 'all 0.15s' }} title="Editar">
+                    <Edit2 style={{ width: '0.9375rem', height: '0.9375rem' }} />
                   </button>
-                  <button onClick={saveEdit} disabled={isSaving} style={{ padding: '0.5rem 1rem', borderRadius: '0.625rem', background: isSaving ? 'rgba(30,41,59,0.5)' : 'rgba(37,99,235,0.9)', border: '1px solid rgba(59,130,246,0.4)', color: 'white', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                    {isSaving
-                      ? <><div style={{ width: '0.875rem', height: '0.875rem', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Salvando...</>
-                      : <><Save style={{ width: '0.875rem', height: '0.875rem' }} /> Salvar</>
-                    }
+                  <button onClick={() => onDelete?.(issue.id)} style={{ padding: '0.5rem', minWidth: '36px', minHeight: '36px', justifyContent: 'center', alignItems: 'center', borderRadius: '0.5rem', background: 'rgba(30,41,59,0.3)', border: '1px solid rgba(51,65,85,0.6)', color: '#94a3b8', cursor: 'pointer', display: 'flex', transition: 'all 0.15s' }} title="Excluir">
+                    <Trash2 style={{ width: '0.9375rem', height: '0.9375rem' }} />
                   </button>
+                </div>
+              )}
+
+              {/* View Mode content */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem', paddingRight: isGestor ? '5.25rem' : '0' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.375rem' }}>
+                  <button onClick={() => toggleSelection(issue.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.375rem', margin: '-0.375rem 0.125rem -0.375rem -0.375rem', color: selectedIssues.has(issue.id) ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center' }}>
+                    {selectedIssues.has(issue.id) ? <CheckSquare style={{ width: '1.25rem', height: '1.25rem' }} /> : <Square style={{ width: '1.25rem', height: '1.25rem' }} />}
+                  </button>
+                  <span style={{ padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem', fontWeight: 700, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {issue.type}
+                  </span>
+                  <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 700, color: 'white', fontSize: '0.8125rem' }}>
+                    NS: {issue.projectNs}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.125rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#475569', fontSize: '0.6875rem' }}>
+                    <Calendar style={{ width: '0.6875rem', height: '0.6875rem' }} />
+                    {fmtDate(issue.date)}
+                  </div>
+                  {isGestor && issue.reportedBy && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748b', fontSize: '0.6875rem' }}>
+                      <UserIcon style={{ width: '0.6875rem', height: '0.6875rem' }} />
+                      {usersMap[issue.reportedBy] || 'Desconhecido'}
+                    </div>
+                  )}
                 </div>
               </div>
-            ) : (
-              /* ── VIEW MODE ── */
-              <>
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.875rem', paddingRight: isGestor ? '5rem' : '0' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-                    <button onClick={() => toggleSelection(issue.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: selectedIssues.has(issue.id) ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center', marginRight: '0.25rem' }}>
-                      {selectedIssues.has(issue.id) ? <CheckSquare style={{ width: '1.25rem', height: '1.25rem' }} /> : <Square style={{ width: '1.25rem', height: '1.25rem' }} />}
-                    </button>
-                    <span style={{ padding: '0.25rem 0.625rem', borderRadius: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {issue.type}
-                    </span>
-                    <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 700, color: 'white', fontSize: '0.875rem' }}>
-                      NS: {issue.projectNs}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.125rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#475569', fontSize: '0.75rem' }}>
-                      <Calendar style={{ width: '0.75rem', height: '0.75rem' }} />
-                      {fmtDate(issue.date)}
-                    </div>
-                    {isGestor && issue.reportedBy && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748b', fontSize: '0.75rem' }}>
-                        <UserIcon style={{ width: '0.75rem', height: '0.75rem' }} />
-                        {usersMap[issue.reportedBy] || 'Desconhecido'}
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                <div style={{ background: 'rgba(2,6,23,0.5)', border: '1px solid rgba(30,41,59,0.7)', borderRadius: '0.625rem', padding: '0.875rem', marginBottom: '0.875rem' }}>
-                  <p style={{ margin: 0, fontSize: '0.8625rem', color: '#cbd5e1', lineHeight: 1.65 }}>{issue.description}</p>
-                </div>
+              <div style={{ background: 'rgba(2,6,23,0.5)', border: '1px solid rgba(30,41,59,0.7)', borderRadius: '0.625rem', padding: '0.75rem', marginBottom: '0.75rem' }}>
+                <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.5 }}>{issue.description}</p>
+              </div>
 
-                {/* Cost row */}
-                {((issue.totalCost ?? 0) > 0 || (issue.timeSpent ?? 0) > 0) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(30,41,59,0.7)' }}>
-                    {[
-                      { icon: Clock, label: 'Tempo', value: `${issue.timeSpent || 0} min` },
-                      { icon: Users, label: 'Pessoas', value: String(issue.peopleInvolved || 1) },
-                      { icon: Package, label: 'Material', value: fmtCurrency(issue.materialCost || 0) },
-                    ].map(({ icon: Icon, label, value }) => (
-                      <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                        <span style={{ fontSize: '0.625rem', color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Icon style={{ width: '0.625rem', height: '0.625rem' }} />{label}
-                        </span>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{value}</span>
-                      </div>
-                    ))}
-                    <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.125rem' }}>
-                      <span style={{ fontSize: '0.625rem', color: '#ef4444', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Custo Total</span>
-                      <span style={{ fontSize: '1.125rem', fontWeight: 800, color: '#f87171', fontFamily: "'DM Mono', monospace" }}>
-                        {fmtCurrency(issue.totalCost || 0)}
+              {/* Cost Row for mobile card */}
+              {((issue.totalCost ?? 0) > 0 || (issue.timeSpent ?? 0) > 0) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(30,41,59,0.7)', marginBottom: (issue.rootCause || issue.correctiveAction || (issue.photos && issue.photos.length > 0)) ? '0.625rem' : '0' }}>
+                  {[
+                    { icon: Clock, label: 'Tempo', value: `${issue.timeSpent || 0}m` },
+                    { icon: Users, label: 'Pess.', value: String(issue.peopleInvolved || 1) },
+                    { icon: Package, label: 'Mat.', value: fmtCurrency(issue.materialCost || 0) },
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                      <span style={{ fontSize: '0.5625rem', color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
+                        <Icon style={{ width: '0.5625rem', height: '0.5625rem' }} />{label}
                       </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{value}</span>
                     </div>
+                  ))}
+                  <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.125rem' }}>
+                    <span style={{ fontSize: '0.5625rem', color: '#ef4444', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 800, color: '#f87171', fontFamily: "'DM Mono', monospace" }}>
+                      {fmtCurrency(issue.totalCost || 0)}
+                    </span>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Root Cause & Corrective Action */}
-                {(issue.rootCause || issue.correctiveAction) && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(30,41,59,0.7)' }}>
-                    {issue.rootCause && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Target style={{ width: '0.75rem', height: '0.75rem', color: '#eab308', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.625rem', color: '#eab308', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Causa Raiz:</span>
-                        <span style={{ fontSize: '0.8125rem', color: '#fde68a', fontWeight: 600, background: 'rgba(234,179,8,0.1)', padding: '0.125rem 0.5rem', borderRadius: '0.375rem', border: '1px solid rgba(234,179,8,0.2)' }}>{issue.rootCause}</span>
+              {/* Root cause and corrective action for mobile */}
+              {(issue.rootCause || issue.correctiveAction) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(30,41,59,0.7)', marginBottom: (issue.photos && issue.photos.length > 0) ? '0.625rem' : '0' }}>
+                  {issue.rootCause && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                      <Target style={{ width: '0.6875rem', height: '0.6875rem', color: '#eab308', flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.5625rem', color: '#eab308', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Causa:</span>
+                      <span style={{ fontSize: '0.75rem', color: '#fde68a', fontWeight: 600, background: 'rgba(234,179,8,0.1)', padding: '0.05rem 0.375rem', borderRadius: '0.25rem', border: '1px solid rgba(234,179,8,0.2)' }}>{issue.rootCause}</span>
+                    </div>
+                  )}
+                  {issue.correctiveAction && (
+                    <div style={{ display: 'flex', gap: '0.375rem' }}>
+                      <Wrench style={{ width: '0.6875rem', height: '0.6875rem', color: '#22c55e', flexShrink: 0, marginTop: '0.125rem' }} />
+                      <div>
+                        <span style={{ fontSize: '0.5625rem', color: '#22c55e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block' }}>Ação Corretiva:</span>
+                        <span style={{ fontSize: '0.75rem', color: '#86efac', lineHeight: 1.4 }}>{issue.correctiveAction}</span>
                       </div>
-                    )}
-                    {issue.correctiveAction && (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Wrench style={{ width: '0.75rem', height: '0.75rem', color: '#22c55e', flexShrink: 0, marginTop: '0.125rem' }} />
-                        <div>
-                          <span style={{ fontSize: '0.625rem', color: '#22c55e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '0.125rem' }}>Ação Corretiva:</span>
-                          <span style={{ fontSize: '0.8125rem', color: '#86efac', lineHeight: 1.5 }}>{issue.correctiveAction}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
+              )}
 
-                {/* Photos */}
-                {issue.photos && issue.photos.length > 0 && (
-                  <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingTop: '0.75rem', paddingBottom: '0.25rem' }}>
-                    {issue.photos.map((photo, idx) => (
-                      <img key={idx} src={photo} alt={`Evidência ${idx + 1}`}
-                        onClick={() => setSelectedImage(photo)}
-                        style={{ width: '4rem', height: '4rem', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid rgba(30,41,59,0.9)', cursor: 'pointer', flexShrink: 0, transition: 'opacity 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.opacity = '0.75'; }}
-                        onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+              {/* Photos for mobile card */}
+              {issue.photos && issue.photos.length > 0 && (
+                <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingTop: '0.625rem', borderTop: '1px solid rgba(30,41,59,0.7)', paddingBottom: '0.125rem' }}>
+                  {issue.photos.map((photo, idx) => (
+                    <img key={idx} src={photo} alt={`Evidência ${idx + 1}`}
+                      onClick={() => setSelectedImage(photo)}
+                      style={{ width: '3.5rem', height: '3.5rem', objectFit: 'cover', borderRadius: '0.375rem', border: '1px solid rgba(30,41,59,0.9)', cursor: 'pointer', flexShrink: 0 }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )) : (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(10,18,35,0.75)', border: '1px dashed rgba(30,41,59,0.9)', borderRadius: '1rem' }}>
+              <AlertTriangle style={{ width: '1.75rem', height: '1.75rem', color: '#334155', margin: '0 auto 0.5rem' }} />
+              <p style={{ color: '#475569', fontSize: '0.8125rem', margin: 0 }}>Nenhum problema encontrado com os filtros atuais.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── EDIT MODE MODAL OVERLAY ── */}
+      {editingIssueId && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          padding: isMobile ? '0.5rem' : '1.5rem',
+        }}>
+          <div style={{
+            background: '#0b1329', border: '1px solid rgba(30,41,59,0.9)',
+            borderRadius: '1.25rem', padding: '1.5rem', width: '100%', maxWidth: '650px',
+            maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+            position: 'relative',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>Editar Ocorrência</h3>
+              <button onClick={cancelEditing} style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '0.25rem' }}>
+                <X style={{ width: '1.25rem', height: '1.25rem' }} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem' }}>
+              <div>
+                <FL>NS do Projeto</FL>
+                <input type="text" value={editForm.projectNs || ''} onChange={e => handleEditChange('projectNs', e.target.value)}
+                  className="dark-input" style={inputStyle} />
+              </div>
+              <div>
+                <FL>Tipo de Erro</FL>
+                <select value={editForm.type || ''} onChange={e => handleEditChange('type', e.target.value)}
+                  className="dark-select" style={inputStyle}>
+                  {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <FL>Descrição</FL>
+                <textarea value={editForm.description || ''} onChange={e => handleEditChange('description', e.target.value)}
+                  className="dark-input" style={{ ...inputStyle, height: '5rem', resize: 'vertical', fontFamily: 'inherit' }} />
+              </div>
+              <div>
+                <FL>Tempo (min)</FL>
+                <input type="number" value={editForm.timeSpent || 0} onChange={e => handleEditChange('timeSpent', Number(e.target.value))}
+                  className="dark-input" style={inputStyle} />
+              </div>
+              <div>
+                <FL>Custo/Hora (R$)</FL>
+                <input type="number" value={editForm.hourlyRate || 0} onChange={e => handleEditChange('hourlyRate', Number(e.target.value))}
+                  className="dark-input" style={inputStyle} />
+              </div>
+              <div>
+                <FL>Pessoas</FL>
+                <input type="number" min="1" value={editForm.peopleInvolved || 1} onChange={e => handleEditChange('peopleInvolved', Number(e.target.value))}
+                  className="dark-input" style={inputStyle} />
+              </div>
+              <div>
+                <FL>Material (R$)</FL>
+                <input type="number" value={editForm.materialCost || 0} onChange={e => handleEditChange('materialCost', Number(e.target.value))}
+                  className="dark-input" style={inputStyle} />
+              </div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(2,6,23,0.6)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '0.75rem', padding: '0.875rem 1rem' }}>
+                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Custo Total</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f87171', fontFamily: "'DM Mono', monospace" }}>
+                  {fmtCurrency(editForm.totalCost || 0)}
+                </span>
+              </div>
+              <div>
+                <FL>Causa Raiz (6M)</FL>
+                <select value={editForm.rootCause || ''} onChange={e => handleEditChange('rootCause', e.target.value)}
+                  className="dark-select" style={inputStyle}>
+                  <option value="">Selecionar causa...</option>
+                  {ROOT_CAUSES.map(rc => <option key={rc} value={rc}>{rc}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <FL>Ação Corretiva</FL>
+                <textarea value={editForm.correctiveAction || ''} onChange={e => handleEditChange('correctiveAction', e.target.value)}
+                  placeholder="Descreva a ação corretiva..."
+                  className="dark-input" style={{ ...inputStyle, height: '4rem', resize: 'vertical', fontFamily: 'inherit' }} />
+              </div>
+
+              {/* Photos */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <FL>Evidências</FL>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {editForm.photos?.map((photo, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: '4rem', height: '4rem', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid rgba(30,41,59,0.9)' }}>
+                      <img src={photo} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button type="button" onClick={() => removePhoto(idx)} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '0.25rem', color: 'white', width: '1.125rem', height: '1.125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        <X style={{ width: '0.625rem', height: '0.625rem' }} />
+                      </button>
+                    </div>
+                  ))}
+                  <label style={{ width: '4rem', height: '4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(51,65,85,0.9)', borderRadius: '0.5rem', cursor: 'pointer', color: '#475569', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.5)'; e.currentTarget.style.color = '#60a5fa'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(51,65,85,0.9)'; e.currentTarget.style.color = '#475569'; }}>
+                    <Upload style={{ width: '1rem', height: '1rem' }} />
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleFileChange} disabled={isUploading} />
+                  </label>
+                </div>
+                {isUploading && <p style={{ fontSize: '0.75rem', color: '#3b82f6', marginTop: '0.375rem' }}>Processando...</p>}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.625rem', marginTop: '1.25rem' }}>
+              <button onClick={cancelEditing} style={{ padding: '0.5rem 1rem', borderRadius: '0.625rem', background: 'none', border: '1px solid rgba(51,65,85,0.8)', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+                Cancelar
+              </button>
+              <button onClick={saveEdit} disabled={isSaving} style={{ padding: '0.5rem 1rem', borderRadius: '0.625rem', background: isSaving ? 'rgba(30,41,59,0.5)' : 'rgba(37,99,235,0.9)', border: '1px solid rgba(59,130,246,0.4)', color: 'white', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                {isSaving
+                  ? <><div style={{ width: '0.875rem', height: '0.875rem', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Salvando...</>
+                  : <><Save style={{ width: '0.875rem', height: '0.875rem' }} /> Salvar</>
+                }
+              </button>
+            </div>
           </div>
-        )) : (
-          <div style={{ textAlign: 'center', padding: '4rem 1rem', background: 'rgba(10,18,35,0.75)', border: '1px dashed rgba(30,41,59,0.9)', borderRadius: '1rem' }}>
-            <AlertTriangle style={{ width: '2rem', height: '2rem', color: '#334155', margin: '0 auto 0.75rem' }} />
-            <p style={{ color: '#475569', fontSize: '0.875rem', margin: 0 }}>Nenhum problema encontrado com os filtros atuais.</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Image modal */}
       {selectedImage && (
-        <div onClick={() => setSelectedImage(null)} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.88)', padding: '1rem' }}>
+        <div onClick={() => setSelectedImage(null)} style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.88)', padding: '1rem' }}>
           <button onClick={() => setSelectedImage(null)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', color: 'white', background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(51,65,85,0.8)', borderRadius: '0.625rem', cursor: 'pointer', padding: '0.375rem', display: 'flex' }}>
             <X style={{ width: '1.25rem', height: '1.25rem' }} />
           </button>
@@ -632,6 +813,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
             style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '0.75rem', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }} />
         </div>
       )}
+
     </div>
   );
 };

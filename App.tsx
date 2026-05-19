@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb, Shield, Activity, Eye } from 'lucide-react';
+import { LayoutDashboard, PenTool, AlertOctagon, Menu, X, History, Users, LogOut, Lightbulb, Shield, Activity, Eye, MoreHorizontal } from 'lucide-react';
 import { ProjectTracker } from './components/ProjectTracker';
 import { IssueReporter } from './components/IssueReporter';
 import { IssueHistory } from './components/IssueHistory';
@@ -42,6 +42,7 @@ const App: React.FC = () => {
   const [issueTab, setIssueTab] = useState<'new' | 'history'>('new');
   const [data, setData] = useState<AppState>({ projects: [], issues: [], innovations: [] });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load data when user logs in or mounts
@@ -274,6 +275,12 @@ const App: React.FC = () => {
     return <ForcePasswordChange user={currentUser} onSuccess={setCurrentUser} />;
   }
 
+  const triggerVibration = () => {
+    if (navigator.vibrate) {
+      navigator.vibrate(15);
+    }
+  };
+
   const NavItem = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => {
     const active = activeTab === id;
     return (
@@ -306,6 +313,10 @@ const App: React.FC = () => {
     ...(canSeeInnovations ? [{ id: 'innovations' as const, label: 'Inovações', icon: Lightbulb }] : []),
     ...(['GESTOR', 'CEO'].includes(currentUser.role) ? [{ id: 'team' as const, label: 'Equipe', icon: Users }] : []),
   ];
+
+  const hasOverflow = mobileNavItems.length > 5;
+  const visibleMobileItems = hasOverflow ? mobileNavItems.slice(0, 4) : mobileNavItems;
+  const isMoreActive = hasOverflow && !visibleMobileItems.some(item => item.id === activeTab);
 
   return (
     <div className="flex min-h-screen" style={{ background: '#020617' }}>
@@ -359,24 +370,157 @@ const App: React.FC = () => {
       {/* Mobile Bottom Nav */}
       <div className="mobile-bottom-nav md:hidden">
         <div style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem 0.25rem' }}>
-          {mobileNavItems.slice(0, 5).map(({ id, label, icon: Icon }) => {
+          {visibleMobileItems.map(({ id, label, icon: Icon }) => {
             const active = activeTab === id;
             return (
-              <button key={id} onClick={() => setActiveTab(id)} style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
-                padding: '0.375rem 0.625rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
-                background: active ? 'rgba(59,130,246,0.15)' : 'none',
-                color: active ? '#60a5fa' : '#475569', transition: 'all 0.15s', flex: 1,
-              }}>
-                <Icon style={{ width: '1.125rem', height: '1.125rem' }} />
-                <span style={{ fontSize: '0.5625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+              <button 
+                key={id} 
+                onClick={() => {
+                  triggerVibration();
+                  setActiveTab(id);
+                  setShowMoreMenu(false);
+                }} 
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
+                  padding: '0.375rem 0.625rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
+                  background: 'none',
+                  color: active ? '#60a5fa' : '#475569', transition: 'all 0.15s', flex: 1,
+                }}
+              >
+                <div className="nav-pill">
+                  {active && <div className="nav-active-bg" />}
+                  <Icon style={{ width: '1.25rem', height: '1.25rem', zIndex: 1, transform: active ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }} />
+                </div>
+                <span style={{ fontSize: '0.5625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', zIndex: 1 }}>{label}</span>
               </button>
             );
           })}
+          
+          {hasOverflow && (
+            <button 
+              onClick={() => {
+                triggerVibration();
+                setShowMoreMenu(!showMoreMenu);
+              }} 
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
+                padding: '0.375rem 0.625rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
+                background: 'none',
+                color: isMoreActive || showMoreMenu ? '#60a5fa' : '#475569', transition: 'all 0.15s', flex: 1,
+              }}
+            >
+              <div className="nav-pill">
+                {(isMoreActive || showMoreMenu) && <div className="nav-active-bg" />}
+                <MoreHorizontal style={{ width: '1.25rem', height: '1.25rem', zIndex: 1, transform: showMoreMenu ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+              </div>
+              <span style={{ fontSize: '0.5625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', zIndex: 1 }}>
+                {showMoreMenu ? 'Fechar' : 'Mais'}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Elegant Glassmorphic Bottom Sheet Drawer for mobile overflow */}
+      {showMoreMenu && hasOverflow && (
+        <div 
+          className="animate-fade-in"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            background: 'rgba(2,6,23,0.75)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+          onClick={() => setShowMoreMenu(false)}
+        >
+          <div 
+            className="animate-slide-up"
+            style={{
+              width: '100%', maxWidth: '500px',
+              background: 'rgba(15,23,42,0.98)', borderTop: '1px solid rgba(255,255,255,0.08)',
+              borderTopLeftRadius: '1.5rem', borderTopRightRadius: '1.5rem',
+              padding: '1.25rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -20px 40px rgba(0,0,0,0.6)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer drag handle */}
+            <div style={{ width: '40px', height: '4px', background: '#334155', borderRadius: '2px', margin: '0 auto 1.25rem' }} />
+            
+            <h3 style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '1rem' }}>
+              Mais Opções do Menu
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+              {mobileNavItems.slice(4).map(({ id, label, icon: Icon }) => {
+                const active = activeTab === id;
+                return (
+                  <button 
+                    key={id} 
+                    onClick={() => {
+                      triggerVibration();
+                      setActiveTab(id);
+                      setShowMoreMenu(false);
+                    }} 
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                      padding: '1rem 0.5rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
+                      background: active ? 'rgba(59,130,246,0.15)' : 'rgba(30,41,59,0.3)',
+                      color: active ? '#60a5fa' : '#94a3b8', transition: 'all 0.15s',
+                    }}
+                  >
+                    <Icon style={{ width: '1.375rem', height: '1.375rem' }} />
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 600, textAlign: 'center' }}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
+
+
+      {/* Sticky Mobile Header */}
+      <header 
+        className="md:hidden"
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          height: 'calc(3.75rem + env(safe-area-inset-top, 0px))', zIndex: 999,
+          background: '#020617', borderBottom: '1px solid rgba(30, 41, 59, 0.8)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 1rem', paddingTop: 'env(safe-area-inset-top, 0px)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <img src={COMPANY_LOGO_URL} alt="Logo" style={{ height: '2rem', width: 'auto', objectFit: 'contain' }} />
+          <span style={{ fontSize: '1rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>
+            Quality<span style={{ color: '#60a5fa' }}>Tracker</span>
+          </span>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#e2e8f0', margin: 0, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentUser.name.split(' ')[0]}
+            </p>
+            <p style={{ fontSize: '0.5625rem', fontWeight: 600, color: '#60a5fa', margin: 0, textTransform: 'uppercase' }}>
+              {currentUser.role}
+            </p>
+          </div>
+          <button 
+            onClick={handleLogout} 
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '2rem', height: '2rem', borderRadius: '0.5rem',
+              color: '#f87171', background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)', cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <LogOut style={{ width: '0.875rem', height: '0.875rem' }} />
+          </button>
+        </div>
+      </header>
 
       {/* Main Content */}
       <main
@@ -384,7 +528,8 @@ const App: React.FC = () => {
         style={{
           background: '#020617',
           padding: '1.5rem',
-          paddingBottom: isDesktop ? '1.5rem' : '5rem',
+          paddingTop: isDesktop ? '1.5rem' : 'calc(4.5rem + env(safe-area-inset-top, 0px))',
+          paddingBottom: isDesktop ? '1.5rem' : 'calc(5.5rem + env(safe-area-inset-bottom, 0px))',
         }}
       >
         {isLoading && (
@@ -480,17 +625,17 @@ const App: React.FC = () => {
                       subtitle="Reporte e analise os problemas ocorridos."
                     />
                     {/* Tab toggle — linha separada, sempre visível */}
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
                       {[{ id: 'new', label: 'Novo Registro' }, { id: 'history', label: 'Histórico de Problemas' }].map(t => (
                         <button key={t.id} onClick={() => setIssueTab(t.id as any)} style={{
+                          flex: 1, minWidth: '140px', minHeight: '48px',
                           padding: '0.6rem 1.25rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontWeight: 600,
                           border: issueTab === t.id ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(30,41,59,0.9)',
                           cursor: 'pointer', transition: 'all 0.15s',
                           background: issueTab === t.id ? 'rgba(59,130,246,0.18)' : 'rgba(10,18,35,0.75)',
                           color: issueTab === t.id ? '#60a5fa' : '#475569',
-                        }}>
-                          {t.label}
-                        </button>
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>{t.label}</button>
                       ))}
                     </div>
                     {issueTab === 'new'

@@ -40,9 +40,9 @@ const FieldLabel = ({ children }: { children: React.ReactNode }) => (
   }}>{children}</label>
 );
 
-const NumberInput = ({ label, icon: Icon, value, onChange, min = 0, step = 1, placeholder = '0' }: {
+const NumberInput = ({ label, icon: Icon, value, onChange, min = 0, step = 1, placeholder = '0', inputMode = 'numeric' }: {
   label: string; icon: any; value: number; onChange: (v: number) => void;
-  min?: number; step?: number; placeholder?: string;
+  min?: number; step?: number; placeholder?: string; inputMode?: 'numeric' | 'decimal';
 }) => (
   <div>
     <FieldLabel>{label}</FieldLabel>
@@ -53,7 +53,9 @@ const NumberInput = ({ label, icon: Icon, value, onChange, min = 0, step = 1, pl
         onChange={e => onChange(Number(e.target.value))}
         placeholder={placeholder}
         className="dark-input"
-        style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '2.25rem', paddingRight: '0.75rem', paddingTop: '0.6rem', paddingBottom: '0.6rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontFamily: "'DM Mono', monospace" }}
+        inputMode={inputMode}
+        pattern={inputMode === 'numeric' ? '[0-9]*' : undefined}
+        style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '2.25rem', paddingRight: '0.75rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem', fontFamily: "'DM Mono', monospace" }}
       />
     </div>
   </div>
@@ -143,7 +145,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
               type="text" value={ns} onChange={e => setNs(e.target.value)} required
               placeholder="Ex: 123456"
               className="dark-input"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem' }}
             />
           </div>
           <div>
@@ -151,7 +153,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             <select
               value={type} onChange={e => handleTypeChange(e.target.value as IssueType)}
               className="dark-select"
-              style={{ width: '100%', padding: '0.65rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem' }}
+              style={{ width: '100%', padding: '0.65rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem' }}
             >
               {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -165,7 +167,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             value={description} onChange={e => setDescription(e.target.value)} rows={3} required
             placeholder="Descreva o problema com detalhes..."
             className="dark-input"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '0.75rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit' }}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '0.75rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit' }}
           />
         </div>
 
@@ -176,7 +178,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             <select
               value={rootCause} onChange={e => setRootCause(e.target.value)}
               className="dark-select"
-              style={{ width: '100%', padding: '0.65rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem' }}
+              style={{ width: '100%', padding: '0.65rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem' }}
             >
               <option value="">Selecionar causa...</option>
               {ROOT_CAUSES.map(rc => <option key={rc} value={rc}>{rc}</option>)}
@@ -189,7 +191,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
               placeholder="Descreva a ação tomada para corrigir..."
               className="dark-input"
               rows={2}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
         </div>
@@ -221,7 +223,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(51,65,85,0.9)'; e.currentTarget.style.color = '#475569'; }}>
               <Camera style={{ width: '1.25rem', height: '1.25rem' }} />
               <span>Adicionar</span>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} style={{ display: 'none' }} />
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} style={{ display: 'none' }} />
             </label>
           </div>
           {isUploading && <p style={{ color: '#3b82f6', fontSize: '0.75rem', marginTop: '0.375rem' }}>Processando imagens...</p>}
@@ -236,10 +238,10 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             Custo do Retrabalho
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.875rem' }}>
-            <NumberInput label="Tempo (min)" icon={Clock} value={timeSpent} onChange={setTimeSpent} />
-            <NumberInput label="Pessoas" icon={Users} value={peopleInvolved} onChange={setPeopleInvolved} min={1} />
-            <NumberInput label="Custo/Hora (R$)" icon={DollarSign} value={hourlyRate} onChange={setHourlyRate} step={0.01} />
-            <NumberInput label="Material (R$)" icon={Package} value={materialCost} onChange={setMaterialCost} step={0.01} />
+            <NumberInput label="Tempo (min)" icon={Clock} value={timeSpent} onChange={setTimeSpent} inputMode="numeric" />
+            <NumberInput label="Pessoas" icon={Users} value={peopleInvolved} onChange={setPeopleInvolved} min={1} inputMode="numeric" />
+            <NumberInput label="Custo/Hora (R$)" icon={DollarSign} value={hourlyRate} onChange={setHourlyRate} step={0.01} inputMode="decimal" />
+            <NumberInput label="Material (R$)" icon={Package} value={materialCost} onChange={setMaterialCost} step={0.01} inputMode="decimal" />
           </div>
 
           {/* Total */}
@@ -267,7 +269,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
 
         {/* Submit */}
         <button type="submit" style={{
-          width: '100%', padding: '0.875rem', borderRadius: '0.875rem',
+          width: '100%', minHeight: '48px', padding: '0.875rem', borderRadius: '0.875rem',
           background: 'linear-gradient(135deg, #b91c1c, #dc2626, #ef4444)',
           border: '1px solid rgba(239,68,68,0.35)', color: 'white', fontWeight: 700,
           fontSize: '0.9375rem', cursor: 'pointer', display: 'flex', alignItems: 'center',
