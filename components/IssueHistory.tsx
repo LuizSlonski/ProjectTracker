@@ -805,8 +805,30 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
 
       {/* Image modal */}
       {selectedImage && (
-        <div onClick={() => setSelectedImage(null)} style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.88)', padding: '1rem' }}>
-          <button onClick={() => setSelectedImage(null)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', color: 'white', background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(51,65,85,0.8)', borderRadius: '0.625rem', cursor: 'pointer', padding: '0.375rem', display: 'flex' }}>
+        <div onClick={() => setSelectedImage(null)} style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(2, 6, 23, 0.92)', backdropFilter: 'blur(10px)', padding: '1rem' }}>
+          <button onClick={() => setSelectedImage(null)} style={{
+            position: 'absolute',
+            top: 'calc(1rem + env(safe-area-inset-top, 1rem))',
+            right: 'calc(1rem + env(safe-area-inset-right, 1rem))',
+            color: 'white',
+            background: 'rgba(15, 23, 42, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '50%',
+            width: '2.75rem',
+            height: '2.75rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            transition: 'all 0.15s',
+            zIndex: 1105
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.95)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.8)'; }}
+          >
             <X style={{ width: '1.25rem', height: '1.25rem' }} />
           </button>
           <img src={selectedImage} alt="Evidência" onClick={e => e.stopPropagation()}
