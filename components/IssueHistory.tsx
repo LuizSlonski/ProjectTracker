@@ -1039,7 +1039,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       <div style={glassStyle}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.75rem', marginBottom: (!isMobile || showMobileDates) ? '0.75rem' : '0' }}>
           {/* Search (Wider search input with a clear 'X' button) */}
-          <div style={{ position: 'relative', flex: '2 1 300px' }}>
+          <div style={{ position: 'relative', flex: isMobile ? 'none' : '2 1 300px' }}>
             <Search style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', width: '0.9375rem', height: '0.9375rem', color: '#8c909f', pointerEvents: 'none' }} />
             <input
               type="text" placeholder="Buscar por NS do projeto..." value={filterNs}
@@ -1889,7 +1889,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                 key={issue.id} 
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleCardExpand(issue.id);
+                  setSelectedIssueForDetail(issue);
                 }}
                 style={{
                   background: '#161b22', 
