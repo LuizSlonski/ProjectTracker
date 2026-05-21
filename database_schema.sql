@@ -46,6 +46,9 @@ create table issues (
   material_cost numeric default 0,
   total_cost numeric default 0,
   photos text[] default array[]::text[],
+  status text default 'ABERTA' check (status in ('ABERTA', 'FINALIZADA')),
+  resolved_photo text,
+  resolved_at timestamp with time zone,
   
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

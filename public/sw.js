@@ -1,9 +1,12 @@
-const CACHE_NAME = 'qualitytracker-v1';
+const CACHE_NAME = 'qualitytracker-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/index.css',
+  '/logo.png',
   '/logo.svg',
+  '/icon-192.png',
+  '/icon-512.png',
   '/manifest.json'
 ];
 

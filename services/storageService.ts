@@ -18,30 +18,27 @@ const defaultState: AppState = {
 
 export const fetchAppState = async (): Promise<AppState> => {
   try {
-    // Fetch Projects (Limited to last 100 to save Disk I/O)
+    // Fetch Projects (Ordered by start time)
     const { data: projectsData, error: projectsError } = await supabase
       .from('projects')
       .select('*')
-      .order('start_time', { ascending: false })
-      .limit(100);
+      .order('start_time', { ascending: false });
 
     if (projectsError) throw projectsError;
 
-    // Fetch Issues (Limited to last 100 to save Disk I/O)
+    // Fetch Issues (Ordered by date)
     const { data: issuesData, error: issuesError } = await supabase
       .from('issues')
       .select('*')
-      .order('date', { ascending: false })
-      .limit(100);
+      .order('date', { ascending: false });
 
     if (issuesError) throw issuesError;
 
-    // Fetch Innovations (Limited to last 100 to save Disk I/O)
+    // Fetch Innovations (Ordered by creation date)
     const { data: innovationsData, error: innovationsError } = await supabase
       .from('innovations')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
+      .order('created_at', { ascending: false });
     
     // Map DB columns (snake_case) to Types (camelCase)
     const projects: ProjectSession[] = (projectsData || []).map((p: any) => ({
@@ -76,7 +73,10 @@ export const fetchAppState = async (): Promise<AppState> => {
       photos: i.photos || [],
       peopleInvolved: Number(i.people_involved) || 1,
       rootCause: i.root_cause || '',
-      correctiveAction: i.corrective_action || ''
+      correctiveAction: i.corrective_action || '',
+      status: i.status || 'ABERTA',
+      resolvedPhoto: i.resolved_photo || undefined,
+      resolvedAt: i.resolved_at || undefined
     }));
 
     const innovations: InnovationRecord[] = (innovationsData || []).map((inv: any) => ({
@@ -187,7 +187,10 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
       photos: issue.photos,
       people_involved: issue.peopleInvolved,
       root_cause: issue.rootCause,
-      corrective_action: issue.correctiveAction
+      corrective_action: issue.correctiveAction,
+      status: issue.status || 'ABERTA',
+      resolved_photo: issue.resolvedPhoto,
+      resolved_at: issue.resolvedAt
     }]);
 
     if (error) throw error;
@@ -215,7 +218,10 @@ export const updateIssue = async (issue: IssueRecord): Promise<AppState> => {
         photos: issue.photos,
         people_involved: issue.peopleInvolved,
         root_cause: issue.rootCause,
-        corrective_action: issue.correctiveAction
+        corrective_action: issue.correctiveAction,
+        status: issue.status,
+        resolved_photo: issue.resolvedPhoto,
+        resolved_at: issue.resolvedAt
       })
       .eq('id', issue.id);
 

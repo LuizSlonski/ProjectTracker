@@ -35,10 +35,11 @@ const fmtCurrency = (v: number) =>
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
   <label style={{
-    display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b',
-    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem',
+    display: 'block', fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-outline)',
+    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem',
   }}>{children}</label>
 );
+
 
 const NumberInput = ({ label, icon: Icon, value, onChange, min = 0, step = 1, placeholder = '0', inputMode = 'numeric' }: {
   label: string; icon: any; value: number; onChange: (v: number) => void;
@@ -55,7 +56,7 @@ const NumberInput = ({ label, icon: Icon, value, onChange, min = 0, step = 1, pl
         className="dark-input"
         inputMode={inputMode}
         pattern={inputMode === 'numeric' ? '[0-9]*' : undefined}
-        style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '2.25rem', paddingRight: '0.75rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem', fontFamily: "'DM Mono', monospace" }}
+        style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '2.25rem', paddingRight: '0.75rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem', fontFamily: "'JetBrains Mono', monospace" }}
       />
     </div>
   </div>
@@ -85,7 +86,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
     if (!e.target.files?.length) return;
     setIsUploading(true);
     try {
-      const urls = await Promise.all(Array.from(e.target.files).map(f => uploadPhoto(f)));
+      const urls = await Promise.all(Array.from(e.target.files).map(f => uploadPhoto(f as File)));
       setPhotos(prev => [...prev, ...urls]);
     } catch {
       alert('Erro ao fazer upload das imagens. Verifique o bucket "issues-photos".');
@@ -121,18 +122,17 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
   const total = calculateTotal();
 
   return (
-    <div style={{
-      background: 'rgba(10,18,35,0.75)', border: '1px solid rgba(30,41,59,0.9)',
-      borderRadius: '1.125rem', padding: '1.75rem', backdropFilter: 'blur(8px)',
+    <div className="glass-card" style={{
+      padding: '1.75rem',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
-        <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.25)' }}>
-          <AlertTriangle style={{ width: '1.125rem', height: '1.125rem', color: '#ef4444' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '1.75rem', paddingBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <AlertTriangle style={{ width: '1.25rem', height: '1.25rem', color: 'var(--color-danger)' }} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, color: '#e2e8f0' }}>Reportar Problema de Qualidade</h2>
-          <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>Registre ocorrências com custo de retrabalho</p>
+          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-on-surface)', letterSpacing: '-0.01em' }}>Reportar Problema de Qualidade</h2>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--color-on-surface-var)' }}>Registre ocorrências com custo de retrabalho</p>
         </div>
       </div>
 
@@ -145,7 +145,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
               type="text" value={ns} onChange={e => setNs(e.target.value)} required
               placeholder="Ex: 123456"
               className="dark-input"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.875rem' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', minHeight: '48px', borderRadius: '0.75rem', fontSize: '0.9375rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em' }}
             />
           </div>
           <div>
@@ -231,10 +231,12 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
 
         {/* Cost section */}
         <div style={{
-          background: 'rgba(2,6,23,0.6)', border: '1px solid rgba(30,41,59,0.9)',
-          borderRadius: '0.875rem', padding: '1.25rem', marginBottom: '1.25rem',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px solid rgba(255, 255, 255, 0.06)',
+          borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.25rem',
         }}>
-          <p style={{ margin: '0 0 1rem', fontSize: '0.6875rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-outline)', textTransform: 'uppercase', letterSpacing: '0.09em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <DollarSign style={{ width: '0.875rem', height: '0.875rem' }} />
             Custo do Retrabalho
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.875rem' }}>
@@ -253,7 +255,7 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.375rem' }}>
               <span style={{
                 fontSize: '1.625rem', fontWeight: 800, color: total > 0 ? '#f87171' : '#475569',
-                fontFamily: "'DM Mono', monospace", letterSpacing: '-0.02em',
+                fontFamily: "'JetBrains Mono', monospace", letterSpacing: '-0.02em',
                 transition: 'color 0.2s',
               }}>
                 {fmtCurrency(total)}
@@ -269,15 +271,16 @@ export const IssueReporter: React.FC<IssueReporterProps> = ({ onReport }) => {
 
         {/* Submit */}
         <button type="submit" style={{
-          width: '100%', minHeight: '48px', padding: '0.875rem', borderRadius: '0.875rem',
+          width: '100%', minHeight: '52px', padding: '0.875rem', borderRadius: '0.875rem',
           background: 'linear-gradient(135deg, #b91c1c, #dc2626, #ef4444)',
           border: '1px solid rgba(239,68,68,0.35)', color: 'white', fontWeight: 700,
           fontSize: '0.9375rem', cursor: 'pointer', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', gap: '0.5rem',
-          boxShadow: '0 4px 20px rgba(220,38,38,0.3)', transition: 'all 0.15s',
+          justifyContent: 'center', gap: '0.625rem',
+          boxShadow: '0 4px 20px rgba(220,38,38,0.25)', transition: 'all 0.15s',
+          letterSpacing: '0.01em',
         }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(220,38,38,0.4)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 20px rgba(220,38,38,0.3)'; }}>
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(220,38,38,0.35)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 20px rgba(220,38,38,0.25)'; }}>
           <Plus style={{ width: '1.125rem', height: '1.125rem' }} />
           Registrar Problema
         </button>

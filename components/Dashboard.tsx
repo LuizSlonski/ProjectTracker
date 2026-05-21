@@ -25,17 +25,22 @@ const formatDuration = (seconds: number) => {
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
 
+
 const S = {
   card: {
-    background: 'rgba(15,23,42,0.7)',
-    border: '1px solid rgba(30,41,59,0.9)',
-    borderRadius: '1rem',
+    background: 'var(--glass-bg)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: 'var(--r-lg)',
     padding: '1.5rem',
-    backdropFilter: 'blur(8px)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    boxShadow: 'var(--glass-shadow)',
+    transition: 'transform 0.2s ease, border-color 0.2s ease',
   } as React.CSSProperties,
-  label: { fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
-  sectionTitle: { fontSize: '0.9375rem', fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '0.5rem' },
+  label: { fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-outline)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
+  sectionTitle: { fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-on-surface)', display: 'flex', alignItems: 'center', gap: '0.5rem' },
 };
+
 
 export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -337,103 +342,84 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         </div>
       )}
 
-      {/* Quality KPIs – visible to all */}
+      {/* Quality KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem' }}>
         {/* Rework cost */}
-        <div className="dash-card" style={{
-          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderLeft: '3px solid rgba(239,68,68,0.6)',
-        }}>
+        <div className="dash-card kpi-card kpi-danger delay-1" style={{ ...cardStyle }}>
           <div>
-            <p style={{ ...S.label, color: '#f87171' }}>Custo de Retrabalho</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fca5a5', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+            <p className="kpi-label" style={{ color: 'var(--color-danger)' }}>Custo de Retrabalho</p>
+            <p className="kpi-value" style={{ color: '#fca5a5' }}>
               {formatCurrency(totalReworkCost)}
             </p>
           </div>
-          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(239,68,68,0.12)' }}>
-            <AlertTriangle style={{ width: '1.125rem', height: '1.125rem', color: '#ef4444' }} />
+          <div className="kpi-icon" style={{ background: 'var(--color-danger-dim)' }}>
+            <AlertTriangle style={{ width: '1.125rem', height: '1.125rem', color: 'var(--color-danger)' }} />
           </div>
         </div>
 
         {/* Rework time */}
-        <div className="dash-card" style={{
-          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderLeft: '3px solid rgba(251,146,60,0.6)',
-        }}>
+        <div className="dash-card kpi-card kpi-orange delay-2" style={{ ...cardStyle }}>
           <div>
-            <p style={{ ...S.label, color: '#fb923c' }}>Tempo de Retrabalho</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fdba74', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+            <p className="kpi-label" style={{ color: '#fb923c' }}>Tempo de Retrabalho</p>
+            <p className="kpi-value" style={{ color: '#fdba74' }}>
               {totalReworkMinutes >= 60
                 ? `${Math.floor(totalReworkMinutes / 60)}h ${totalReworkMinutes % 60}m`
                 : `${totalReworkMinutes}m`}
             </p>
           </div>
-          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(251,146,60,0.12)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(251,146,60,0.12)' }}>
             <Timer style={{ width: '1.125rem', height: '1.125rem', color: '#f97316' }} />
           </div>
         </div>
 
         {/* Rework Rate */}
-        <div className="dash-card" style={{
-          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderLeft: '3px solid rgba(168,85,247,0.6)',
-        }}>
+        <div className="dash-card kpi-card kpi-purple delay-3" style={{ ...cardStyle }}>
           <div>
-            <p style={{ ...S.label, color: '#c084fc' }}>Taxa de Retrabalho</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#d8b4fe', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+            <p className="kpi-label" style={{ color: '#c084fc' }}>Taxa de Retrabalho</p>
+            <p className="kpi-value" style={{ color: '#d8b4fe' }}>
               {reworkRate}%
             </p>
           </div>
-          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(168,85,247,0.12)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(168,85,247,0.12)' }}>
             <Percent style={{ width: '1.125rem', height: '1.125rem', color: '#a855f7' }} />
           </div>
         </div>
 
         {/* Avg Rework Cost */}
-        <div className="dash-card" style={{
-          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderLeft: '3px solid rgba(236,72,153,0.6)',
-        }}>
+        <div className="dash-card kpi-card kpi-pink delay-4" style={{ ...cardStyle }}>
           <div>
-            <p style={{ ...S.label, color: '#f472b6' }}>Custo Médio / Ocorrência</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f9a8d4', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+            <p className="kpi-label" style={{ color: '#f472b6' }}>Custo Médio / Ocorrência</p>
+            <p className="kpi-value" style={{ color: '#f9a8d4' }}>
               {formatCurrency(avgReworkCost)}
             </p>
           </div>
-          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(236,72,153,0.12)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(236,72,153,0.12)' }}>
             <DollarSign style={{ width: '1.125rem', height: '1.125rem', color: '#ec4899' }} />
           </div>
         </div>
 
         {/* MTTR */}
-        <div className="dash-card" style={{
-          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderLeft: '3px solid rgba(6,182,212,0.6)',
-        }}>
+        <div className="dash-card kpi-card kpi-cyan delay-5" style={{ ...cardStyle }}>
           <div>
-            <p style={{ ...S.label, color: '#22d3ee' }}>Tempo Médio (MTTR)</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#67e8f9', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+            <p className="kpi-label" style={{ color: '#22d3ee' }}>Tempo Médio (MTTR)</p>
+            <p className="kpi-value" style={{ color: '#67e8f9' }}>
               {avgReworkTime >= 60 ? `${Math.floor(avgReworkTime / 60)}h ${avgReworkTime % 60}m` : `${avgReworkTime}m`}
             </p>
           </div>
-          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(6,182,212,0.12)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(6,182,212,0.12)' }}>
             <Clock style={{ width: '1.125rem', height: '1.125rem', color: '#06b6d4' }} />
           </div>
         </div>
 
-
         {/* Total Issues */}
-        <div className="dash-card" style={{
-          ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderLeft: '3px solid rgba(99,102,241,0.6)',
-        }}>
+        <div className="dash-card kpi-card kpi-indigo delay-6" style={{ ...cardStyle }}>
           <div>
-            <p style={{ ...S.label, color: '#818cf8' }}>Total Ocorrências</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#a5b4fc', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+            <p className="kpi-label" style={{ color: '#818cf8' }}>Total Ocorrências</p>
+            <p className="kpi-value" style={{ color: '#a5b4fc' }}>
               {totalIssueCount}
             </p>
           </div>
-          <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(99,102,241,0.12)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(99,102,241,0.12)' }}>
             <Hash style={{ width: '1.125rem', height: '1.125rem', color: '#6366f1' }} />
           </div>
         </div>
@@ -449,7 +435,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             }}>
               <div>
                 <p style={S.label}>Média {stat.type}</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0.25rem 0 0', fontFamily: "'JetBrains Mono', monospace" }}>
                   {formatDuration(stat.avgSeconds)}
                 </p>
               </div>
@@ -466,7 +452,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
           }}>
             <div>
               <p style={{ ...S.label, color: '#4ade80' }}>Economia Aprovada</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#86efac', margin: '0.25rem 0 0', fontFamily: "'DM Mono', monospace" }}>
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#86efac', margin: '0.25rem 0 0', fontFamily: "'JetBrains Mono', monospace" }}>
                 {formatCurrency(totalSavings)}
               </p>
             </div>

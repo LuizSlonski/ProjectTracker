@@ -1,4 +1,5 @@
 -- Add new columns to issues table if they don't exist
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ABERTA' CHECK (status IN ('ABERTA', 'FINALIZADA'));
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS people_involved NUMERIC DEFAULT 1;
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS photos TEXT[] DEFAULT '{}';
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS material_cost NUMERIC DEFAULT 0;
@@ -25,3 +26,8 @@ ALTER TABLE users ADD CONSTRAINT users_role_check
 -- TO public
 -- USING (true)
 -- WITH CHECK (true);
+
+-- Migration for resolution fields:
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS resolved_photo TEXT;
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP WITH TIME ZONE;
+

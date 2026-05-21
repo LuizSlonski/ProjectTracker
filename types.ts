@@ -128,6 +128,11 @@ export interface IssueRecord {
   // Quality Management Fields
   rootCause?: string; // Ishikawa 6M category
   correctiveAction?: string; // What was done to fix it
+
+  // Workflow Status
+  status?: 'ABERTA' | 'FINALIZADA'; // defaults to ABERTA if undefined
+  resolvedPhoto?: string; // Optional confirmation photo on resolution
+  resolvedAt?: string; // ISO timestamp when marked as resolved
 }
 
 export interface InnovationRecord {
