@@ -3,7 +3,7 @@ import {
   Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X, Edit2, 
   Save, Upload, Clock, DollarSign, Users, Package, FileText, Wrench, 
   Target, CheckSquare, Square, ChevronLeft, ChevronRight, CheckCircle2, 
-  RotateCcw, Image as ImageIcon, MoreVertical, Camera
+  RotateCcw, Image as ImageIcon, MoreVertical, Camera, Plus
 } from 'lucide-react';
 import { AppState, IssueType, User, IssueRecord } from '../types';
 import { ISSUE_TYPES, ROOT_CAUSES } from '../constants';
@@ -282,6 +282,23 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   const [lightboxPhotoUrl, setLightboxPhotoUrl] = useState<string | null>(null);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
+  // Advanced feature state extensions
+  const [selectedChip, setSelectedChip] = useState<'Todos' | 'Portas' | 'Pintura' | 'Montagem' | 'Reincidência'>('Todos');
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+  const [photoSource, setPhotoSource] = useState<'camera' | 'gallery' | null>(null);
+  const [sourceError, setSourceError] = useState(false);
+  const [resolutionPhotos, setResolutionPhotos] = useState<string[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const toggleCardExpand = (id: string) => {
+    setExpandedCardIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const siblings = useMemo(() => {
     if (!selectedIssueForDetail) return [];
     return getReincidentIssues(selectedIssueForDetail, data.issues);
@@ -290,7 +307,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   useEffect(() => {
     const timer = setInterval(() => {
       setNowDate(new Date());
-    }, 30000);
+    }, 60000); // updates every 1 minute
     return () => clearInterval(timer);
   }, []);
 
@@ -369,22 +386,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       const start = new Date(issue.date).getTime();
       const end = new Date(issue.resolvedAt).getTime();
       const diffMs = end - start;
-      if (diffMs <= 0) return <span style={{ color: '#8c909f' }}>0m</span>;
-      
-      const minutes = Math.floor(diffMs / 60000);
-      const hours = Math.floor(minutes / 60);
-      const remMinutes = minutes % 60;
-      
-      let text = '';
-      if (hours >= 24) {
-        const days = Math.floor(hours / 24);
-        const remHours = hours % 24;
-        text = `${days}d ${remHours}h`;
-      } else if (hours > 0) {
-        text = `${hours}h ${remMinutes}m`;
-      } else {
-        text = `${minutes}m`;
-      }
+      const text = getFormattedDuration(diffMs);
       return (
         <span style={{ 
           color: '#8c909f', 
@@ -408,22 +410,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       if (!issue.date) return <span style={{ color: '#22c55e' }}>-</span>;
       const start = new Date(issue.date).getTime();
       const diffMs = nowDate.getTime() - start;
-      if (diffMs <= 0) return <span style={{ color: '#22c55e', fontSize: '0.8125rem', fontWeight: 700 }}>0m</span>;
-      
-      const minutes = Math.floor(diffMs / 60000);
-      const hours = Math.floor(minutes / 60);
-      const remMinutes = minutes % 60;
-      
-      let text = '';
-      if (hours >= 24) {
-        const days = Math.floor(hours / 24);
-        const remHours = hours % 24;
-        text = `${days}d ${remHours}h`;
-      } else if (hours > 0) {
-        text = `${hours}h ${remMinutes}m`;
-      } else {
-        text = `${minutes}m`;
-      }
+      const hours = diffMs / 3600000;
+      const text = getFormattedDuration(diffMs);
       
       let color = '#22c55e';
       let bgColor = 'rgba(34, 197, 94, 0.12)';
@@ -490,9 +478,22 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
         matchDate = d >= s && d <= e;
       }
       const matchReincident = filterReincident ? isReincidencia(issue, data.issues) : true;
-      return matchStatus && matchNs && matchType && matchDate && matchReincident;
+      
+      // selectedChip quick-filters
+      let matchChip = true;
+      if (selectedChip === 'Portas') {
+        matchChip = issue.type === 'Portas';
+      } else if (selectedChip === 'Pintura') {
+        matchChip = issue.type === 'Pintura';
+      } else if (selectedChip === 'Montagem') {
+        matchChip = issue.type.toLowerCase().includes('montagem');
+      } else if (selectedChip === 'Reincidência') {
+        matchChip = isReincidencia(issue, data.issues);
+      }
+
+      return matchStatus && matchNs && matchType && matchDate && matchReincident && matchChip;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [data.issues, workflowTab, filterNs, filterType, startDate, endDate, filterReincident]);
+  }, [data.issues, workflowTab, filterNs, filterType, startDate, endDate, filterReincident, selectedChip]);
 
   const handleStatusToggle = async (issue: IssueRecord) => {
     const nextStatus = (issue.status || 'ABERTA') === 'ABERTA' ? 'FINALIZADA' : 'ABERTA';
@@ -524,33 +525,102 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     }
   };
 
-  const handleResolutionPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getFormattedDuration = (ms: number): string => {
+    if (ms <= 0) return '0m';
+    const minutes = Math.floor(ms / 60000);
+    const hours = Math.floor(minutes / 60);
+    const remMinutes = minutes % 60;
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remHours = hours % 24;
+      return `${days} dias ${remHours}h`;
+    } else if (hours > 0) {
+      return `${hours}h ${remMinutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  const getMobileTimeDisplay = (issue: IssueRecord) => {
+    if (issue.status === 'FINALIZADA') {
+      if (!issue.resolvedAt || !issue.date) return { text: '-', color: '#8c909f' };
+      const start = new Date(issue.date).getTime();
+      const end = new Date(issue.resolvedAt).getTime();
+      const diffMs = end - start;
+      return { text: getFormattedDuration(diffMs), color: '#8c909f' };
+    } else {
+      if (!issue.date) return { text: '-', color: '#22c55e' };
+      const start = new Date(issue.date).getTime();
+      const diffMs = nowDate.getTime() - start;
+      const hours = diffMs / 3600000;
+      const text = getFormattedDuration(diffMs);
+      
+      let color = '#22c55e';
+      if (hours >= 24) {
+        color = '#ef4444';
+      } else if (hours >= 4) {
+        color = '#f0a500';
+      }
+      return { text, color };
+    }
+  };
+
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+
+  const handleResolutionPhotoAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
     const file = e.target.files[0];
     if (file.size > 5 * 1024 * 1024) {
       alert('Erro: O arquivo excede o limite de 5MB.');
       return;
     }
-    setIsUploadingResolutionPhoto(true);
+    setIsUploadingPhotos(true);
     try {
       const url = await uploadPhoto(file);
-      setResolutionPhoto(url);
+      setResolutionPhotos(prev => [...prev, url]);
     } catch {
       alert('Erro ao carregar imagem de resolução.');
     } finally {
-      setIsUploadingResolutionPhoto(false);
+      setIsUploadingPhotos(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeResolutionPhoto = (index: number) => {
+    setResolutionPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddClick = () => {
+    if (!photoSource) {
+      setSourceError(true);
+      setTimeout(() => setSourceError(false), 1200);
+      return;
+    }
+    if (photoSource === 'camera') {
+      document.getElementById('resolution-camera-input')?.click();
+    } else {
+      document.getElementById('resolution-gallery-input')?.click();
     }
   };
 
   const confirmResolution = async () => {
     if (!resolvingIssue) return;
     try {
+      const start = new Date(resolvingIssue.date).getTime();
+      const end = new Date().getTime();
+      const diffMs = end - start;
+      const openTimeText = getFormattedDuration(diffMs);
+
       const updated = {
         ...resolvingIssue,
         status: 'FINALIZADA' as const,
         resolvedAt: new Date().toISOString(),
-        resolvedPhoto: resolutionPhoto || undefined
+        resolvedBy: currentUser.name,
+        resolvedPhoto: resolutionPhotos[0] || undefined,
+        resolvedPhotos: resolutionPhotos,
+        timeOpen: openTimeText
       };
+      
       await updateIssue(updated);
       
       if (selectedIssueForDetail?.id === resolvingIssue.id) {
@@ -558,7 +628,13 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       }
       
       setResolvingIssue(null);
-      setResolutionPhoto(null);
+      setResolutionPhotos([]);
+      setPhotoSource(null);
+      
+      setToastMessage('Ocorrência finalizada ✓');
+      setTimeout(() => setToastMessage(null), 3000);
+      
+      setWorkflowTab('FINALIZADA');
       onUpdate?.();
     } catch (e: any) {
       alert(`Erro ao finalizar ocorrência: ${e.message}`);
@@ -681,20 +757,163 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     return { bg: 'rgba(139, 92, 246, 0.12)', border: '1px solid rgba(139, 92, 246, 0.25)', text: '#a78bfa' };
   };
 
-  const stats = useMemo(() => {
-    const totalCost = filteredIssues.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
-    const totalMinutes = filteredIssues.reduce((acc, curr) => acc + (curr.timeSpent || 0), 0);
-    const totalHours = (totalMinutes / 60).toFixed(1);
-    const totalOperators = filteredIssues.reduce((acc, curr) => acc + (curr.peopleInvolved || 1), 0);
+  const showCost = currentUser.role !== 'QUALIDADE';
+  const isQualidade = currentUser.role === 'QUALIDADE';
+
+  const globalStats = useMemo(() => {
+    const open = data.issues.filter(i => (i.status || 'ABERTA') === 'ABERTA').length;
+    const reinc = data.issues.filter(i => isReincidencia(i, data.issues)).length;
+    const totalCost = data.issues.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+    return { open, reinc, totalCost };
+  }, [data.issues]);
+
+  const chipCounts = useMemo(() => {
+    const issuesInTab = data.issues.filter(i => (i.status || 'ABERTA') === workflowTab);
     return {
-      totalCost,
-      totalHours,
-      totalOperators
+      Todos: issuesInTab.length,
+      Portas: issuesInTab.filter(i => i.type === 'Portas').length,
+      Pintura: issuesInTab.filter(i => i.type === 'Pintura').length,
+      Montagem: issuesInTab.filter(i => i.type.toLowerCase().includes('montagem')).length,
+      Reincidencia: issuesInTab.filter(i => isReincidencia(i, data.issues)).length,
     };
-  }, [filteredIssues]);
+  }, [data.issues, workflowTab]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+      {/* ── STYLE SHEET FOR ANIMATIONS ── */}
+      <style>{`
+        @keyframes slide-up {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-up {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20%, 60% { transform: translateX(-6px); }
+          40%, 80% { transform: translateX(6px); }
+        }
+      `}</style>
+
+      {/* ── SUMMARY STATS GRID (2x2 on mobile) ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile 
+          ? 'repeat(2, 1fr)' 
+          : (showCost ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'),
+        gap: '0.75rem',
+        width: '100%',
+        marginBottom: '0.25rem'
+      }}>
+        {/* Card 1: Em Aberto */}
+        <div style={{
+          background: 'rgba(22, 27, 34, 0.6)',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          borderRadius: '0.75rem',
+          padding: '0.625rem 0.875rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.625rem',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+        }}>
+          <div style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            background: '#ef4444',
+            boxShadow: '0 0 10px #ef4444',
+            display: 'inline-block'
+          }} className="status-dot" />
+          <div>
+            <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+              🔴 Em Aberto
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+              {globalStats.open}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Reincidências */}
+        <div style={{
+          background: 'rgba(22, 27, 34, 0.6)',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          borderRadius: '0.75rem',
+          padding: '0.625rem 0.875rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.625rem',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+        }}>
+          <AlertTriangle style={{ width: '1.25rem', height: '1.25rem', color: '#f0a500' }} />
+          <div>
+            <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+              ⚠️ Reincidências
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f0a500', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+              {globalStats.reinc}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Tempo Médio de Resolução */}
+        <div style={{
+          background: 'rgba(22, 27, 34, 0.6)',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          borderRadius: '0.75rem',
+          padding: '0.625rem 0.875rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.625rem',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          gridColumn: (isMobile && !showCost) ? 'span 2' : 'auto'
+        }}>
+          <Clock style={{ width: '1.25rem', height: '1.25rem', color: '#10b981' }} />
+          <div>
+            <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+              ⏱ T. Médio Resolução
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+              {avgResolutionTimeStr}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Custo Total (Hidden for QUALIDADE role) */}
+        {showCost && (
+          <div style={{
+            background: 'rgba(22, 27, 34, 0.6)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            borderRadius: '0.75rem',
+            padding: '0.625rem 0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.625rem',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+          }}>
+            <DollarSign style={{ width: '1.25rem', height: '1.25rem', color: '#22c55e' }} />
+            <div>
+              <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+                💰 Custo Total
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#22c55e', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+                {fmtCurrency(globalStats.totalCost)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── SEGMENTED WORKFLOW TABS ── */}
       <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '0.25rem' }}>
@@ -747,7 +966,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px'
+              gap: '6px',
+              minHeight: '44px'
             }}
           >
             <span 
@@ -759,7 +979,6 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                 boxShadow: '0 0 8px #eab308',
                 display: 'inline-block' 
               }} 
-              className="status-dot"
             />
             Em Aberto
             <span style={{ 
@@ -790,7 +1009,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px'
+              gap: '6px',
+              minHeight: '44px'
             }}
           >
             <span style={{ 
@@ -812,133 +1032,6 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               fontFamily: "'JetBrains Mono', monospace"
             }}>{closedCount}</span>
           </button>
-        </div>
-      </div>
-
-      {/* ── SUMMARY STATS STRIP ── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
-        gap: '0.75rem',
-        width: '100%',
-        marginBottom: '0.25rem'
-      }}>
-        {/* Card 1: Status count */}
-        <div style={{
-          background: 'rgba(22, 27, 34, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          backdropFilter: 'blur(12px)'
-        }}>
-          <div style={{
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            background: workflowTab === 'ABERTA' ? '#ef4444' : '#10b981',
-            boxShadow: workflowTab === 'ABERTA' ? '0 0 10px #ef4444' : '0 0 10px #10b981',
-            display: 'inline-block'
-          }} className={workflowTab === 'ABERTA' ? "status-dot" : ""} />
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              🔴 {workflowTab === 'ABERTA' ? 'Em Aberto' : 'Finalizadas'}
-            </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
-              {workflowTab === 'ABERTA' ? openCount : closedCount}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Cost */}
-        <div style={{
-          background: 'rgba(22, 27, 34, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          backdropFilter: 'blur(12px)'
-        }}>
-          <DollarSign style={{ width: '1.375rem', height: '1.375rem', color: '#f0a500' }} />
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              💰 Custo Total
-            </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: stats.totalCost > 0 ? '#f0a500' : '#22c55e', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
-              {fmtCurrency(stats.totalCost)}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Time */}
-        <div style={{
-          background: 'rgba(22, 27, 34, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          backdropFilter: 'blur(12px)'
-        }}>
-          <Clock style={{ width: '1.375rem', height: '1.375rem', color: '#2d8cff' }} />
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              ⏱ Tempo Total
-            </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
-              {stats.totalHours}h
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Operators */}
-        <div style={{
-          background: 'rgba(22, 27, 34, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          backdropFilter: 'blur(12px)'
-        }}>
-          <Users style={{ width: '1.375rem', height: '1.375rem', color: '#22c55e' }} />
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              👷 Operadores envolvidos
-            </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
-              {stats.totalOperators}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 5: Average Resolution Time */}
-        <div style={{
-          background: 'rgba(22, 27, 34, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          backdropFilter: 'blur(12px)',
-          gridColumn: isMobile ? 'span 2' : 'auto'
-        }}>
-          <Clock style={{ width: '1.375rem', height: '1.375rem', color: '#10b981' }} />
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              ⏱ T. Médio Resolução
-            </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
-              {avgResolutionTimeStr}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -969,103 +1062,116 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                   padding: '2px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  minHeight: '44px',
+                  minWidth: '44px'
                 }}
-                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                onMouseLeave={e => e.currentTarget.style.color = '#8c909f'}
               >
                 <X style={{ width: '0.875rem', height: '0.875rem' }} />
               </button>
             )}
           </div>
-          {/* Type filter dropdown consistently styled */}
-          <div style={{ position: 'relative', flex: '1 1 180px' }}>
-            <select
-              value={filterType} onChange={e => setFilterType(e.target.value)}
-              className="dark-select font-sans"
+
+          {/* Type / Area Select (desktop only) */}
+          {!isMobile && (
+            <div style={{ flex: '1 1 200px' }}>
+              <select
+                value={filterType}
+                onChange={e => setFilterType(e.target.value)}
+                className="dark-input font-sans animate-fade-in"
+                style={{ ...inputStyle }}
+              >
+                <option value="">Todas as áreas</option>
+                {ISSUE_TYPES.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Toggle Dates Button (mobile only) */}
+          {isMobile && (
+            <button
+              onClick={() => setShowMobileDates(!showMobileDates)}
               style={{
-                ...inputStyle,
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                paddingRight: '2.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                minHeight: '44px',
+                borderRadius: '0.75rem',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: 'white',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
                 cursor: 'pointer'
               }}
             >
-              <option value="">Todos os Tipos</option>
-              {ISSUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <div style={{
-              position: 'absolute',
-              right: '0.875rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              pointerEvents: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              color: '#8c909f'
-            }}>
-              <ChevronRight style={{ width: '0.875rem', height: '0.875rem', transform: 'rotate(90deg)' }} />
+              <Calendar style={{ width: '0.9375rem', height: '0.9375rem', color: '#2d8cff' }} />
+              {showMobileDates ? 'Ocultar Filtros de Data' : 'Filtrar por Data'}
+            </button>
+          )}
+
+          {/* Date range picker (always on desktop, toggleable on mobile) */}
+          {(!isMobile || showMobileDates) && (
+            <div style={{ display: 'flex', gap: '0.5rem', flex: isMobile ? '1 1 auto' : '1.5 1 300px' }}>
+              <input
+                type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="dark-input font-sans" style={{ ...inputStyle, flex: 1 }}
+                title="Data inicial"
+              />
+              <span style={{ display: 'flex', alignItems: 'center', color: '#8c909f', fontSize: '0.8125rem' }}>até</span>
+              <input
+                type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className="dark-input font-sans" style={{ ...inputStyle, flex: 1 }}
+                title="Data final"
+              />
             </div>
-            
-            {isMobile && (
-              <button 
-                onClick={() => setShowMobileDates(!showMobileDates)}
-                style={{
-                  position: 'absolute',
-                  right: '-56px',
-                  top: '0',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '0 0.875rem', minHeight: '48px', borderRadius: '0.75rem',
-                  background: showMobileDates ? 'rgba(59,130,246,0.2)' : 'rgba(30,41,59,0.6)',
-                  border: showMobileDates ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(51,65,85,0.6)',
-                  color: showMobileDates ? '#60a5fa' : '#94a3b8', cursor: 'pointer', transition: 'all 0.15s'
-                }}
-              >
-                <Calendar style={{ width: '1.125rem', height: '1.125rem' }} />
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Date filters */}
+        {/* Legend strip inside panel */}
         {(!isMobile || showMobileDates) && (
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: isMobile ? 'column' : 'row', 
-            gap: '0.75rem', 
-            alignItems: isMobile ? 'flex-start' : 'center', 
-            paddingTop: '0.75rem', 
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            width: '100%'
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: '0.75rem',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            marginTop: '0.75rem',
+            paddingTop: '0.75rem',
+            borderTop: '1px solid rgba(255, 255, 255, 0.05)'
           }}>
-            <span style={{ fontSize: '0.75rem', color: '#8c909f', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              <Calendar style={{ width: '0.875rem', height: '0.875rem', color: '#2d8cff' }} /> Período:
+            <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-outline)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Legenda do Tempo (Aberto):
             </span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', width: '100%', alignItems: 'center' }}>
-              {[{ label: 'De', val: startDate, set: setStartDate }, { label: 'Até', val: endDate, set: setEndDate }].map(({ label, val, set }) => (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              {[
+                { label: 'Normal (< 4h)', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.25)' },
+                { label: 'Alerta (4h-24h)', color: '#f0a500', bg: 'rgba(240, 165, 0, 0.12)', border: 'rgba(240, 165, 0, 0.25)' },
+                { label: 'Atrasado (> 24h)', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)' }
+              ].map(({ label, color, bg, border }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: isMobile ? '1 1 120px' : 'none' }}>
-                  <span style={{ fontSize: '0.6875rem', color: '#8c909f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-                  <input type="date" value={val} onChange={e => set(e.target.value)}
-                    className="dark-input font-sans"
-                    style={{
-                      ...inputStyle,
-                      width: '100%',
-                      padding: '0.4rem 0.625rem',
-                      fontSize: '0.8125rem',
-                      minHeight: '36px',
-                      background: '#161b22',
-                      border: '1px solid #21262d',
-                      color: '#e1e2ec'
-                    }}
-                  />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
+                  <span style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 700,
+                    color,
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    padding: '1px 6px',
+                    borderRadius: '4px'
+                  }}>{label}</span>
                 </div>
               ))}
-              {(filterNs || filterType || startDate || endDate) && (
-                <button onClick={() => { setFilterNs(''); setFilterType(''); setStartDate(''); setEndDate(''); }}
+              
+              {/* Reset date filter link */}
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
                   style={{ marginLeft: isMobile ? '0' : 'auto', marginTop: isMobile ? '0.25rem' : '0', fontSize: '0.75rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.5rem 0', fontWeight: 600 }}
                 >
-                  <X style={{ width: '0.875rem', height: '0.875rem' }} /> Limpar Filtros
+                  <X style={{ width: '0.75rem', height: '0.75rem' }} /> Limpar filtros de data
                 </button>
               )}
             </div>
@@ -1084,40 +1190,50 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
         scrollbarWidth: 'none',
         msOverflowStyle: 'none'
       }} className="premium-scroll">
-        {['Todos', 'Portas', 'Pintura', 'Montagem de chassi', 'Montagem acessórios', 'Almoxarifado', 'Engenharia'].map(chip => {
-          const isSelected = chip === 'Todos' ? filterType === '' : filterType === chip;
+        {[
+          { label: 'Todos', value: 'Todos', activeColor: '#60a5fa', activeBg: 'rgba(45, 140, 255, 0.15)', activeBorder: 'rgba(45, 140, 255, 0.4)', count: chipCounts.Todos },
+          { label: 'Portas', value: 'Portas', activeColor: '#34d399', activeBg: 'rgba(52, 211, 153, 0.15)', activeBorder: 'rgba(52, 211, 153, 0.4)', count: chipCounts.Portas },
+          { label: 'Pintura', value: 'Pintura', activeColor: '#a78bfa', activeBg: 'rgba(167, 139, 250, 0.15)', activeBorder: 'rgba(167, 139, 250, 0.4)', count: chipCounts.Pintura },
+          { label: 'Montagem', value: 'Montagem', activeColor: '#f472b6', activeBg: 'rgba(244, 114, 182, 0.15)', activeBorder: 'rgba(244, 114, 182, 0.4)', count: chipCounts.Montagem },
+          { label: '⚠ Reincid.', value: 'Reincidência', activeColor: '#f0a500', activeBg: 'rgba(240, 165, 0, 0.15)', activeBorder: 'rgba(240, 165, 0, 0.5)', count: chipCounts.Reincidencia, isWarning: true }
+        ].map(chip => {
+          const isSelected = selectedChip === chip.value;
           return (
             <button
-              key={chip}
-              onClick={() => setFilterType(chip === 'Todos' ? '' : chip)}
+              key={chip.value}
+              onClick={() => setSelectedChip(chip.value as any)}
               style={{
                 flexShrink: 0,
-                padding: '0.375rem 0.875rem',
+                padding: '0.5rem 1rem',
                 borderRadius: '9999px',
                 fontSize: '0.75rem',
-                fontWeight: 600,
-                border: isSelected ? '1px solid rgba(45, 140, 255, 0.4)' : '1px solid rgba(255,255,255,0.06)',
-                background: isSelected ? 'rgba(45, 140, 255, 0.15)' : 'rgba(22, 27, 34, 0.6)',
-                color: isSelected ? '#60a5fa' : '#8c909f',
+                fontWeight: 700,
+                border: isSelected 
+                  ? `1px solid ${chip.activeBorder}` 
+                  : (chip.isWarning ? '1px solid rgba(240, 165, 0, 0.2)' : '1px solid rgba(255,255,255,0.06)'),
+                background: isSelected 
+                  ? chip.activeBg 
+                  : (chip.isWarning ? 'rgba(240, 165, 0, 0.05)' : 'rgba(22, 27, 34, 0.6)'),
+                color: isSelected 
+                  ? chip.activeColor 
+                  : (chip.isWarning ? '#f0a500' : '#8c909f'),
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={e => {
-                if (!isSelected) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
-                  e.currentTarget.style.color = '#cbd5e1';
-                }
-              }}
-              onMouseLeave={e => {
-                if (!isSelected) {
-                  e.currentTarget.style.background = 'rgba(22, 27, 34, 0.6)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                  e.currentTarget.style.color = '#8c909f';
-                }
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                minHeight: '44px'
               }}
             >
-              {chip}
+              <span>{chip.label}</span>
+              <span style={{ 
+                fontSize: '0.6875rem', 
+                background: isSelected ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)', 
+                color: isSelected ? 'white' : '#64748b', 
+                padding: '1px 6px', 
+                borderRadius: '999px',
+                fontFamily: "'JetBrains Mono', monospace"
+              }}>{chip.count}</span>
             </button>
           );
         })}
@@ -1145,7 +1261,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
             fontWeight: 600,
             color: '#cbd5e1',
             cursor: 'pointer',
-            userSelect: 'none'
+            userSelect: 'none',
+            minHeight: '44px'
           }}>
             <button
               onClick={toggleSelectAll}
@@ -1155,7 +1272,11 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                 cursor: 'pointer',
                 color: selectedIssues.size === filteredIssues.length && filteredIssues.length > 0 ? '#2d8cff' : '#424754',
                 display: 'flex',
-                padding: 0
+                padding: 0,
+                minHeight: '44px',
+                minWidth: '44px',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               {selectedIssues.size === filteredIssues.length && filteredIssues.length > 0
@@ -1164,90 +1285,64 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
             </button>
             Selecionar Todos os {filteredIssues.length} itens
           </label>
-
-          {reincidentCount > 0 && (
-            <button
-              onClick={() => setFilterReincident(prev => !prev)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.375rem 0.875rem',
-                borderRadius: '0.5rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                background: filterReincident ? 'rgba(240, 165, 0, 0.25)' : 'rgba(240, 165, 0, 0.1)',
-                border: filterReincident ? '1px solid #f0a500' : '1px solid rgba(240, 165, 0, 0.3)',
-                color: '#f0a500',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: filterReincident ? '0 0 10px rgba(240, 165, 0, 0.2)' : 'none'
-              }}
-            >
-              ⚠️ {reincidentCount} {reincidentCount === 1 ? 'Reincidência detectada' : 'Reincidências detectadas'}
-              {filterReincident && <span style={{ fontSize: '0.6875rem', opacity: 0.8, marginLeft: '4px' }}>[Filtrado]</span>}
-            </button>
-          )}
         </div>
 
-        <button
-          onClick={() => generatePdfReport(selectedIssues.size > 0 ? filteredIssues.filter(i => selectedIssues.has(i.id)) : filteredIssues, usersMap)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            padding: '0.5rem 1.25rem',
-            minHeight: '38px',
-            borderRadius: '0.5rem',
-            fontSize: '0.8125rem',
-            fontWeight: 700,
-            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.25) 100%)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            color: '#f87171',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.05)'
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.35) 100%)';
-            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.6)';
-            e.currentTarget.style.boxShadow = '0 4px 15px rgba(239, 68, 68, 0.2)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.25) 100%)';
-            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.05)';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          <FileText style={{ width: '0.9375rem', height: '0.9375rem' }} />
-          Gerar Relatório PDF
-          <span style={{
-            background: 'rgba(239, 68, 68, 0.25)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            color: '#fca5a5',
-            padding: '1px 6px',
-            borderRadius: '999px',
-            fontSize: '0.6875rem',
-            fontWeight: 800,
-            marginLeft: '4px',
-            fontFamily: "'JetBrains Mono', monospace"
-          }}>
-            {selectedIssues.size > 0 ? selectedIssues.size : filteredIssues.length}
-          </span>
-        </button>
+        {/* Generate PDF Report button (Hidden for QUALIDADE role) */}
+        {!isQualidade && (
+          <button
+            onClick={() => generatePdfReport(selectedIssues.size > 0 ? filteredIssues.filter(i => selectedIssues.has(i.id)) : filteredIssues, usersMap)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1.25rem',
+              minHeight: '44px',
+              borderRadius: '0.5rem',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.25) 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              color: '#f87171',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.05)'
+            }}
+          >
+            <FileText style={{ width: '0.9375rem', height: '0.9375rem' }} />
+            Gerar Relatório PDF
+            <span style={{
+              background: 'rgba(239, 68, 68, 0.25)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              color: '#fca5a5',
+              padding: '1px 6px',
+              borderRadius: '999px',
+              fontSize: '0.6875rem',
+              fontWeight: 800,
+              marginLeft: '4px',
+              fontFamily: "'JetBrains Mono', monospace"
+            }}>
+              {selectedIssues.size > 0 ? selectedIssues.size : filteredIssues.length}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* ── DESKTOP VIEW — FULL-WIDTH PREMIUM DATA TABLE ── */}
       {!isMobile && (
         <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '0.625rem', WebkitOverflowScrolling: 'touch' }} className="premium-scroll">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '1300px' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '0.5rem', 
+            minWidth: showCost ? '1300px' : '1180px' 
+          }}>
           {/* Header bar */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '40px 150px 90px 130px 3fr 2fr 130px 120px 160px',
+            gridTemplateColumns: showCost 
+              ? '40px 150px 90px 130px 3fr 2fr 130px 120px 160px' 
+              : '40px 150px 90px 130px 3fr 2fr 130px 160px',
             gap: '0.75rem',
             padding: '0.75rem 1.125rem',
             color: 'var(--color-outline)',
@@ -1271,13 +1366,13 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
             <div>Descrição do Problema</div>
             <div>Causa Raiz & Ação</div>
             <div>Recursos</div>
-            <div style={{ textAlign: 'right' }}>Custo Total</div>
+            {showCost && <div style={{ textAlign: 'right' }}>Custo Total</div>}
             <div style={{ textAlign: 'center' }}>Ações</div>
           </div>
 
           {/* Issue rows */}
           {filteredIssues.length > 0 ? filteredIssues.map((issue, index) => {
-            const isWarning = isWarningRow(issue);
+            const isWarning = isReincidencia(issue, data.issues);
             const rowBorderColor = isWarning ? '#f0a500' : 'transparent';
             
             return (
@@ -1286,7 +1381,9 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                 onClick={() => setSelectedIssueForDetail(issue)}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '40px 150px 90px 130px 3fr 2fr 130px 120px 160px',
+                  gridTemplateColumns: showCost 
+                    ? '40px 150px 90px 130px 3fr 2fr 130px 120px 160px' 
+                    : '40px 150px 90px 130px 3fr 2fr 130px 160px',
                   gap: '0.75rem',
                   alignItems: 'center',
                   background: index % 2 === 0 ? 'rgba(22, 27, 34, 0.8)' : 'rgba(13, 15, 20, 0.8)',
@@ -1376,7 +1473,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                         boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
                         pointerEvents: 'none'
                       }} className="group-hover:visible group-hover:opacity-100">
-                        ⚠️ Alerta: Esta ocorrência envolve retrabalho ou é uma possível duplicata de NS.
+                        ⚠️ Alerta: Esta ocorrência envolve retrabalho (reincidente).
                       </div>
                     </div>
                   )}
@@ -1390,11 +1487,11 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     {renderResolutionTime(issue)}
-                    {issue.status === 'FINALIZADA' && issue.resolvedPhoto && (
+                    {issue.status === 'FINALIZADA' && (issue.resolvedPhoto || (issue.resolvedPhotos && issue.resolvedPhotos.length > 0)) && (
                       <button
                         onClick={e => {
                           e.stopPropagation();
-                          setLightboxPhotoUrl(issue.resolvedPhoto || null);
+                          setLightboxPhotoUrl(issue.resolvedPhoto || issue.resolvedPhotos?.[0] || null);
                         }}
                         style={{
                           background: 'rgba(34, 197, 94, 0.1)',
@@ -1558,23 +1655,27 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                 </div>
 
                 {/* Total Cost Right-aligned bold monospaced */}
-                <div style={{
-                  textAlign: 'right',
-                  fontWeight: 800,
-                  color: (issue.totalCost || 0) === 0 ? '#22c55e' : '#f0a500',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '1.0625rem',
-                }}>
-                  {fmtCurrency(issue.totalCost || 0)}
-                </div>
+                {showCost && (
+                  <div style={{
+                    textAlign: 'right',
+                    fontWeight: 800,
+                    color: (issue.totalCost || 0) === 0 ? '#22c55e' : '#f0a500',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '1.0625rem',
+                  }}>
+                    {fmtCurrency(issue.totalCost || 0)}
+                  </div>
+                )}
 
                 {/* Actions column - direct Finalizar button + 3-dot dropdown menu */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', position: 'relative' }} onClick={e => e.stopPropagation()}>
-                  {isGestor && issue.status !== 'FINALIZADA' && (
+                  {issue.status !== 'FINALIZADA' && (
                     <button
                       onClick={e => {
                         e.stopPropagation();
-                        handleStatusToggle(issue);
+                        setResolvingIssue(issue);
+                        setResolutionPhotos([]);
+                        setPhotoSource(null);
                       }}
                       style={{
                         background: 'rgba(34, 197, 94, 0.12)',
@@ -1589,7 +1690,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                         fontSize: '0.75rem',
                         fontWeight: 700,
                         transition: 'all 0.15s',
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        minHeight: '32px'
                       }}
                       onMouseEnter={e => {
                         e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)';
@@ -1601,14 +1703,14 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                         e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.3)';
                         e.currentTarget.style.transform = 'scale(1)';
                       }}
-                      title="Finalizar esta ocorrência"
+                      title="Resolver esta ocorrência"
                     >
                       <CheckCircle2 style={{ width: '0.875rem', height: '0.875rem' }} />
-                      Finalizar
+                      Resolver
                     </button>
                   )}
 
-                  {isGestor && issue.status === 'FINALIZADA' && (
+                  {issue.status === 'FINALIZADA' && (
                     <div
                       style={{
                         background: 'rgba(255, 255, 255, 0.03)',
@@ -1630,140 +1732,134 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                     </div>
                   )}
 
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      setActiveMenuIssueId(activeMenuIssueId === issue.id ? null : issue.id);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: '0.375rem',
-                      padding: '0.375rem',
-                      color: '#8c909f',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-                      e.currentTarget.style.color = 'white';
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                      e.currentTarget.style.color = '#8c909f';
-                      e.currentTarget.style.background = 'none';
-                    }}
-                    title="Mais Ações"
-                  >
-                    <MoreVertical style={{ width: '0.875rem', height: '0.875rem' }} />
-                  </button>
+                  {/* Dropdown Menu Trigger (Hidden for QUALIDADE role since they cannot edit/delete) */}
+                  {!isQualidade && (
+                    <>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setActiveMenuIssueId(activeMenuIssueId === issue.id ? null : issue.id);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          borderRadius: '0.375rem',
+                          padding: '0.375rem',
+                          color: '#8c909f',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                          e.currentTarget.style.color = 'white';
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                          e.currentTarget.style.color = '#8c909f';
+                          e.currentTarget.style.background = 'none';
+                        }}
+                        title="Mais Ações"
+                      >
+                        <MoreVertical style={{ width: '0.875rem', height: '0.875rem' }} />
+                      </button>
 
-                  {/* Dropdown Menu Overlay */}
-                  {activeMenuIssueId === issue.id && (
-                    <div style={{
-                      position: 'absolute',
-                      right: '0',
-                      top: '105%',
-                      background: '#161b22',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '0.5rem',
-                      padding: '4px',
-                      width: '160px',
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                      zIndex: 50,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px'
-                    }}>
-                      {isGestor && (
-                        <button
-                          onClick={() => { setActiveMenuIssueId(null); handleStatusToggle(issue); }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: 'none',
-                            background: 'none',
-                            color: issue.status === 'FINALIZADA' ? '#f0a500' : '#22c55e',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            borderRadius: '4px'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                          {issue.status === 'FINALIZADA'
-                            ? <RotateCcw style={{ width: '0.875rem', height: '0.875rem' }} />
-                            : <CheckCircle2 style={{ width: '0.875rem', height: '0.875rem' }} />}
-                          {issue.status === 'FINALIZADA' ? 'Reabrir Ocorrência' : 'Finalizar Ocorrência'}
-                        </button>
-                      )}
-                      
-                      {isGestor && (
-                        <button
-                          onClick={() => { setActiveMenuIssueId(null); startEditing(issue); }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: 'none',
-                            background: 'none',
-                            color: '#adc6ff',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            borderRadius: '4px'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                          <Edit2 style={{ width: '0.875rem', height: '0.875rem' }} />
-                          Editar Registro
-                        </button>
-                      )}
+                      {/* Dropdown Menu Overlay */}
+                      {activeMenuIssueId === issue.id && (
+                        <div style={{
+                          position: 'absolute',
+                          right: '0',
+                          top: '105%',
+                          background: '#161b22',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '0.5rem',
+                          padding: '4px',
+                          width: '160px',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                          zIndex: 50,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px'
+                        }}>
+                          <button
+                            onClick={() => { setActiveMenuIssueId(null); handleStatusToggle(issue); }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: 'none',
+                              background: 'none',
+                              color: issue.status === 'FINALIZADA' ? '#f0a500' : '#22c55e',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            {issue.status === 'FINALIZADA'
+                              ? <RotateCcw style={{ width: '0.875rem', height: '0.875rem' }} />
+                              : <CheckCircle2 style={{ width: '0.875rem', height: '0.875rem' }} />}
+                            {issue.status === 'FINALIZADA' ? 'Reabrir Ocorrência' : 'Finalizar Ocorrência'}
+                          </button>
+                          
+                          <button
+                            onClick={() => { setActiveMenuIssueId(null); startEditing(issue); }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: 'none',
+                              background: 'none',
+                              color: '#adc6ff',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <Edit2 style={{ width: '0.875rem', height: '0.875rem' }} />
+                            Editar Registro
+                          </button>
 
-                      {isGestor && (
-                        <button
-                          onClick={() => { setActiveMenuIssueId(null); onDelete?.(issue.id); }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: 'none',
-                            background: 'none',
-                            color: '#f87171',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            borderRadius: '4px'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                          <Trash2 style={{ width: '0.875rem', height: '0.875rem' }} />
-                          Excluir Registro
-                        </button>
+                          <button
+                            onClick={() => { setActiveMenuIssueId(null); onDelete?.(issue.id); }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: 'none',
+                              background: 'none',
+                              color: '#f87171',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <Trash2 style={{ width: '0.875rem', height: '0.875rem' }} />
+                            Excluir Registro
+                          </button>
+                        </div>
                       )}
-                      {!isGestor && (
-                        <span style={{ fontSize: '0.6875rem', color: '#424754', padding: '6px 8px', textAlign: 'center', display: 'block' }}>
-                          Sem permissão
-                        </span>
-                      )}
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -1783,99 +1879,41 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       {isMobile && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
           {filteredIssues.length > 0 ? filteredIssues.map((issue, idx) => {
-            const isWarning = isWarningRow(issue);
-            const cardBorderColor = isWarning ? '#f0a500' : 'rgba(255, 255, 255, 0.05)';
+            const isReinc = isReincidencia(issue, data.issues);
+            const cardLeftBorderColor = isReinc ? '#f0a500' : '#2d8cff';
+            const isExpanded = expandedCardIds.has(issue.id);
+            const timeInfo = getMobileTimeDisplay(issue);
+
             return (
               <div 
                 key={issue.id} 
-                onClick={() => setSelectedIssueForDetail(issue)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCardExpand(issue.id);
+                }}
                 style={{
-                  background: 'linear-gradient(135deg, rgba(13, 22, 42, 0.7) 0%, rgba(6, 11, 23, 0.85) 100%)', 
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  background: '#161b22', 
+                  border: '1px solid #21262d',
                   borderRadius: '1.25rem', 
                   padding: '1.125rem', 
                   backdropFilter: 'blur(8px)',
-                  borderLeft: `4px solid ${cardBorderColor}`, 
+                  borderLeft: `2.5px solid ${cardLeftBorderColor}`, 
                   position: 'relative',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  minHeight: '44px'
                 }}
               >
-                {/* Actions at top-right for mobile view */}
-                {isGestor && (
-                  <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.5rem', zIndex: 1 }}>
-                    {/* Status Toggle checkcircle */}
-                    <button 
-                      onClick={e => { e.stopPropagation(); handleStatusToggle(issue); }} 
-                      style={{ 
-                        padding: '0.5rem', 
-                        minWidth: '38px', 
-                        minHeight: '38px', 
-                        justifyContent: 'center', 
-                        alignItems: 'center', 
-                        borderRadius: '0.625rem', 
-                        background: 'rgba(255,255,255,0.03)', 
-                        border: '1px solid rgba(255,255,255,0.06)', 
-                        color: issue.status === 'FINALIZADA' ? '#eab308' : '#10b981', 
-                        cursor: 'pointer', 
-                        display: 'flex' 
-                      }} 
-                      title={issue.status === 'FINALIZADA' ? "Reabrir" : "Finalizar"}
-                    >
-                      {issue.status === 'FINALIZADA' ? <RotateCcw style={{ width: '1rem', height: '1rem' }} /> : <CheckCircle2 style={{ width: '1rem', height: '1rem' }} />}
-                    </button>
-
-                    <button 
-                      onClick={e => { e.stopPropagation(); startEditing(issue); }} 
-                      style={{ 
-                        padding: '0.5rem', 
-                        minWidth: '38px', 
-                        minHeight: '38px', 
-                        justifyContent: 'center', 
-                        alignItems: 'center', 
-                        borderRadius: '0.625rem', 
-                        background: 'rgba(255,255,255,0.03)', 
-                        border: '1px solid rgba(255,255,255,0.06)', 
-                        color: '#adc6ff', 
-                        cursor: 'pointer', 
-                        display: 'flex' 
-                      }} 
-                      title="Editar"
-                    >
-                      <Edit2 style={{ width: '1rem', height: '1rem' }} />
-                    </button>
-                    <button 
-                      onClick={e => { e.stopPropagation(); onDelete?.(issue.id); }} 
-                      style={{ 
-                        padding: '0.5rem', 
-                        minWidth: '38px', 
-                        minHeight: '38px', 
-                        justifyContent: 'center', 
-                        alignItems: 'center', 
-                        borderRadius: '0.625rem', 
-                        background: 'rgba(255,255,255,0.03)', 
-                        border: '1px solid rgba(255,255,255,0.06)', 
-                        color: '#f87171', 
-                        cursor: 'pointer', 
-                        display: 'flex' 
-                      }} 
-                      title="Excluir"
-                    >
-                      <Trash2 style={{ width: '1rem', height: '1rem' }} />
-                    </button>
-                  </div>
-                )}
-
-                {/* View Mode header */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.875rem', paddingRight: isGestor ? '8rem' : '0' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.375rem' }}>
-                    <button onClick={e => { e.stopPropagation(); toggleSelection(issue.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', margin: '-0.25rem 0.125rem -0.25rem -0.25rem', color: selectedIssues.has(issue.id) ? '#2d8cff' : '#424754', display: 'flex', alignItems: 'center' }}>
-                      {selectedIssues.has(issue.id) ? <CheckSquare style={{ width: '1.25rem', height: '1.25rem' }} /> : <Square style={{ width: '1.25rem', height: '1.25rem' }} />}
-                    </button>
+                {/* Top Row: [TIPO/ÁREA badge] [reincidência badge if applicable] — right-aligned [NS number] */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                     <span style={{ 
-                      padding: '0.2rem 0.5rem', 
-                      borderRadius: '0.25rem', 
-                      fontSize: '0.625rem', 
+                      padding: '0.25rem 0.5rem', 
+                      borderRadius: '0.375rem', 
+                      fontSize: '11px', 
                       fontWeight: 800, 
                       background: getAreaBadgeStyle(issue.type).bg,
                       border: getAreaBadgeStyle(issue.type).border,
@@ -1885,209 +1923,189 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                     }}>
                       {issue.type}
                     </span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'white', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      NS: {issue.projectNs}
-                      {isWarning && <AlertTriangle style={{ width: '0.8125rem', height: '0.8125rem', color: '#f0a500' }} title="Alerta de Retrabalho/Duplicata" />}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.125rem', width: '100%', marginTop: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#cbd5e1', fontSize: '0.6875rem' }}>
-                      <Calendar style={{ width: '0.6875rem', height: '0.6875rem', color: '#2d8cff' }} />
-                      {fmtDate(issue.date)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#cbd5e1', fontSize: '0.6875rem', marginTop: '0.25rem' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--color-outline)' }}>Tempo:</span>
-                      {renderResolutionTime(issue)}
-                      {issue.status === 'FINALIZADA' && issue.resolvedPhoto && (
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            setLightboxPhotoUrl(issue.resolvedPhoto || null);
-                          }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: 0,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#22c55e',
-                            transition: 'transform 0.15s ease',
-                            marginLeft: '4px'
-                          }}
-                          title="Ver foto de confirmação da resolução"
-                        >
-                          <Camera style={{ width: '0.75rem', height: '0.75rem' }} />
-                        </button>
-                      )}
-                    </div>
-                    {issue.reportedBy && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#8c909f', fontSize: '0.6875rem' }}>
-                        <UserIcon style={{ width: '0.6875rem', height: '0.6875rem', color: '#22c55e' }} />
-                        Reportado por: {usersMap[issue.reportedBy] || 'Operador'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Description card */}
-                <div style={{ background: 'rgba(2, 6, 23, 0.4)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '0.75rem', padding: '0.875rem', marginBottom: '0.875rem' }}>
-                  {isWarning && (
-                    <div style={{ marginBottom: '0.5rem' }}>
+                    {isReinc && (
                       <span style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '0.625rem',
-                        fontWeight: 700,
+                        gap: '2px',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '10px',
+                        fontWeight: 800,
                         background: 'rgba(240, 165, 0, 0.12)',
                         border: '1px solid rgba(240, 165, 0, 0.25)',
                         color: '#f0a500'
                       }}>
                         ⚠️ Reincidência
                       </span>
-                    </div>
-                  )}
-                  <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.5 }}>{issue.description}</p>
+                    )}
+                  </div>
+                  <span style={{ 
+                    fontFamily: "'JetBrains Mono', monospace", 
+                    fontWeight: 800, 
+                    color: 'white', 
+                    fontSize: '16px' 
+                  }}>
+                    {issue.projectNs}
+                  </span>
                 </div>
 
-                {/* Resources row */}
-                {((issue.totalCost ?? 0) > 0 || (issue.timeSpent ?? 0) > 0) && (
-                  <div style={{ 
-                    display: 'flex', 
-                    flexWrap: 'wrap', 
-                    gap: '0.75rem', 
-                    alignItems: 'center',
-                    paddingTop: '0.75rem', 
-                    borderTop: '1px solid rgba(255,255,255,0.05)', 
-                    marginBottom: (issue.rootCause || issue.correctiveAction || (issue.photos && issue.photos.length > 0)) ? '0.75rem' : '0' 
-                  }}>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        background: 'rgba(240, 165, 0, 0.1)',
-                        border: '1px solid rgba(240, 165, 0, 0.2)',
-                        color: '#f0a500',
-                        fontFamily: "'JetBrains Mono', monospace"
-                      }} title="Tempo de retrabalho">
-                        ⏱ {issue.timeSpent || 0}m
-                      </span>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        background: 'rgba(45, 140, 255, 0.1)',
-                        border: '1px solid rgba(45, 140, 255, 0.2)',
-                        color: '#2d8cff',
-                        fontFamily: "'JetBrains Mono', monospace"
-                      }} title="Operadores envolvidos">
-                        👷 {issue.peopleInvolved || 1}
-                      </span>
-                    </div>
+                {/* Description text (2 lines max, full text on tap/expand) */}
+                <p 
+                  style={{
+                    margin: 0,
+                    fontSize: '13px',
+                    color: '#cbd5e1',
+                    lineHeight: 1.5,
+                    display: '-webkit-box',
+                    WebkitLineClamp: isExpanded ? 'unset' : 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    wordBreak: 'break-word',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {issue.description}
+                </p>
 
-                    <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.125rem' }}>
-                      <span style={{ fontSize: '0.5625rem', color: '#8c909f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Custo total</span>
-                      <span style={{ fontSize: '0.9375rem', fontWeight: 800, color: (issue.totalCost || 0) === 0 ? '#22c55e' : '#f0a500', fontFamily: "'JetBrains Mono', monospace" }}>
+                {/* Attachments preview if available on mobile */}
+                {issue.photos && issue.photos.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.375rem', overflowX: 'auto', padding: '0.125rem 0' }} onClick={e => e.stopPropagation()}>
+                    {issue.photos.map((photo, pIdx) => (
+                      <img
+                        key={pIdx}
+                        src={photo}
+                        alt="Anexo"
+                        onClick={() => { setSelectedIssueForModal(issue); setActivePhotoIndex(pIdx); }}
+                        style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '0.375rem', border: '1px solid rgba(255,255,255,0.08)' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* 3-column meta row: Tempo Aberto | Recursos | Custo (hidden for QUALIDADE role) */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: showCost ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                  gap: '0.5rem',
+                  padding: '0.625rem 0',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  fontSize: '12px',
+                  color: '#8c909f'
+                }}>
+                  {/* Tempo Aberto / Resolution Time */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                      {issue.status === 'FINALIZADA' ? 'Resolução' : 'Tempo Aberto'}
+                    </span>
+                    <span style={{ 
+                      color: timeInfo.color,
+                      fontWeight: 700,
+                      fontFamily: "'JetBrains Mono', monospace"
+                    }}>
+                      {timeInfo.text}
+                    </span>
+                  </div>
+
+                  {/* Recursos */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Recursos</span>
+                    <span style={{ color: 'white', fontWeight: 600 }}>
+                      ⏱{issue.timeSpent || 0}m | 👷{issue.peopleInvolved || 1}
+                    </span>
+                  </div>
+
+                  {/* Custo (Only visible if showCost is true) */}
+                  {showCost && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Custo</span>
+                      <span style={{ 
+                        color: (issue.totalCost || 0) === 0 ? '#22c55e' : '#f0a500', 
+                        fontWeight: 800,
+                        fontFamily: "'JetBrains Mono', monospace"
+                      }}>
                         {fmtCurrency(issue.totalCost || 0)}
                       </span>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {/* Cause and action */}
-                {(issue.rootCause || issue.correctiveAction) && (
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '0.5rem', 
-                    paddingTop: '0.75rem', 
-                    borderTop: '1px solid rgba(255,255,255,0.05)', 
-                    marginBottom: (issue.photos && issue.photos.length > 0) ? '0.75rem' : '0' 
-                  }}>
-                    {issue.rootCause && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                        <Target style={{ width: '0.6875rem', height: '0.6875rem', color: getRootCauseStyle(issue.rootCause).text, flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.5625rem', color: getRootCauseStyle(issue.rootCause).text, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Causa:</span>
-                        <span style={{
-                          fontSize: '0.6875rem',
-                          color: getRootCauseStyle(issue.rootCause).text,
+                {/* Footer: left = causa badge, right = "Resolver" green button */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                  {/* Left: Causa Raiz badge */}
+                  <div>
+                    {issue.rootCause ? (
+                      <span style={{
+                        fontSize: '11px',
+                        color: getRootCauseStyle(issue.rootCause).text,
+                        fontWeight: 700,
+                        background: getRootCauseStyle(issue.rootCause).bg,
+                        border: getRootCauseStyle(issue.rootCause).border,
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        display: 'inline-block'
+                      }}>{issue.rootCause}</span>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: '#424754', fontStyle: 'italic' }}>Sem causa raiz</span>
+                    )}
+                  </div>
+
+                  {/* Right: Resolver button or Finalizada status badge */}
+                  <div>
+                    {issue.status !== 'FINALIZADA' ? (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setResolvingIssue(issue);
+                          setResolutionPhotos([]);
+                          setPhotoSource(null);
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
+                          border: 'none',
+                          color: 'white',
+                          borderRadius: '0.5rem',
+                          padding: '0.5rem 1rem',
+                          fontSize: '12px',
                           fontWeight: 700,
-                          background: getRootCauseStyle(issue.rootCause).bg,
-                          border: getRootCauseStyle(issue.rootCause).border,
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          display: 'inline-block'
-                        }}>{issue.rootCause}</span>
-                      </div>
-                    )}
-                    {issue.correctiveAction && (
-                      <div style={{ display: 'flex', gap: '0.375rem' }}>
-                        <Wrench style={{ width: '0.6875rem', height: '0.6875rem', color: '#22c55e', flexShrink: 0, marginTop: '0.125rem' }} />
-                        <div>
-                          <span style={{ fontSize: '0.5625rem', color: '#22c55e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block' }}>Ação Corretiva:</span>
-                          <span style={{ fontSize: '0.75rem', color: '#cbd5e1', lineHeight: 1.4 }}>{issue.correctiveAction}</span>
-                        </div>
-                      </div>
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          minWidth: '100px',
+                          minHeight: '44px',
+                          boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)'
+                        }}
+                      >
+                        <CheckCircle2 style={{ width: '0.875rem', height: '0.875rem' }} />
+                        Resolver
+                      </button>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '0.5rem',
+                        padding: '0.5rem 1rem',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#8c909f',
+                        minHeight: '44px'
+                      }}>
+                        ✓ Finalizada
+                      </span>
                     )}
                   </div>
-                )}
+                </div>
 
-                {/* Evidences (Carousel Thumbnail for mobile) */}
-                {issue.photos && issue.photos.length > 0 && (
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    gap: '0.375rem',
-                    paddingTop: '0.75rem', 
-                    borderTop: '1px solid rgba(255,255,255,0.05)'
-                  }}>
-                    <span style={{ fontSize: '0.5625rem', color: '#8c909f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <ImageIcon style={{ width: '0.625rem', height: '0.625rem', color: '#2d8cff' }} /> Evidências anexadas ({issue.photos.length})
-                    </span>
-                    <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-                      {issue.photos.map((photo, pIdx) => (
-                        <div key={pIdx} style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                          <img 
-                            src={photo} 
-                            alt={`Evidência ${pIdx + 1}`}
-                            onClick={() => { setSelectedIssueForModal(issue); setActivePhotoIndex(pIdx); }}
-                            style={{ width: '3.75rem', height: '3.75rem', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}
-                          />
-                          <div style={{
-                            position: 'absolute',
-                            bottom: '3px',
-                            right: '3px',
-                            background: 'rgba(15,23,42,0.85)',
-                            color: '#e1e2ec',
-                            fontSize: '0.5rem',
-                            padding: '1px 4px',
-                            borderRadius: '4px',
-                            fontFamily: "'JetBrains Mono', monospace"
-                          }}>
-                            {pIdx + 1}/{issue.photos.length}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             );
           }) : (
-            <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(10,18,35,0.4)', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '1rem' }}>
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', background: '#161b22', border: '1px dashed #21262d', borderRadius: '1rem' }}>
               <AlertTriangle style={{ width: '1.75rem', height: '1.75rem', color: '#f0a500', margin: '0 auto 0.5rem' }} />
               <p style={{ color: '#8c909f', fontSize: '0.8125rem', margin: 0 }}>Nenhuma ocorrência encontrada nesta aba.</p>
             </div>
@@ -2983,182 +3001,327 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       )}
 
       {/* ── RESOLUTION CONFIRMATION MODAL ── */}
-      {resolvingIssue && (
-        <>
-          <div 
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 1050,
-              background: 'rgba(2, 6, 23, 0.85)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)'
-            }}
-            onClick={() => {
-              setResolvingIssue(null);
-              setResolutionPhoto(null);
-            }}
-          />
-          <div 
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1060,
-              width: '90%',
-              maxWidth: '500px',
-              background: '#0d1117',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.25rem'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <CheckCircle2 style={{ width: '1.25rem', height: '1.25rem', color: '#22c55e' }} />
-                Confirmar Resolução
-              </h3>
-              <button 
-                onClick={() => {
-                  setResolvingIssue(null);
-                  setResolutionPhoto(null);
-                }}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-              >
-                <X style={{ width: '1.25rem', height: '1.25rem' }} />
-              </button>
-            </div>
+      {resolvingIssue && (() => {
+        const start = new Date(resolvingIssue.date).getTime();
+        const diffMs = nowDate.getTime() - start;
+        const timeOpenText = getFormattedDuration(diffMs);
 
-            <p style={{ margin: 0, fontSize: '0.9375rem', color: '#8c909f', lineHeight: 1.5 }}>
-              Você está marcando a ocorrência <strong style={{ color: 'white' }}>#{resolvingIssue.projectNs} - {resolvingIssue.type}</strong> como resolvida. Se desejar, adicione uma foto evidenciando o item corrigido.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Foto da Resolução (Opcional)
-              </span>
-
-              <div style={{
-                border: '2px dashed rgba(255, 255, 255, 0.1)',
-                borderRadius: '0.75rem',
-                padding: '1rem',
-                textAlign: 'center',
-                background: 'rgba(255, 255, 255, 0.01)',
-                position: 'relative',
+        return (
+          <>
+            <div 
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1050,
+                background: 'rgba(2, 6, 23, 0.85)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)'
+              }}
+              onClick={() => {
+                setResolvingIssue(null);
+                setResolutionPhotos([]);
+                setPhotoSource(null);
+              }}
+            />
+            <div 
+              style={isMobile ? {
+                position: 'fixed',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 1060,
+                width: '100%',
+                maxWidth: '100%',
+                background: '#0d1117',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                borderTopLeftRadius: '1.25rem',
+                borderTopRightRadius: '1.25rem',
+                padding: '1.5rem',
+                boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.5)',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.75rem',
-                minHeight: '120px'
-              }}>
-                {isUploadingResolutionPhoto ? (
-                  <div style={{ color: '#60a5fa', fontSize: '0.875rem', fontWeight: 600 }}>Enviando imagem...</div>
-                ) : resolutionPhoto ? (
-                  <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.15)' }}>
-                    <img src={resolutionPhoto} alt="Resolução" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <button 
-                      onClick={() => setResolutionPhoto(null)}
+                gap: '1.25rem',
+                animation: 'slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+              } : {
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 1060,
+                width: '90%',
+                maxWidth: '500px',
+                background: '#0d1117',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '1rem',
+                padding: '1.5rem',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                animation: 'fade-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <CheckCircle2 style={{ width: '1.25rem', height: '1.25rem', color: '#22c55e' }} />
+                    Confirmar resolução
+                  </h3>
+                  <span style={{ fontSize: '0.8125rem', color: '#8c909f', fontWeight: 500 }}>
+                    {resolvingIssue.description} — <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'white' }}>{resolvingIssue.projectNs}</span>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{
+                    background: 'rgba(34, 197, 94, 0.12)',
+                    color: '#22c55e',
+                    border: '1px solid rgba(34, 197, 94, 0.25)',
+                    padding: '3px 8px',
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    fontFamily: "'JetBrains Mono', monospace"
+                  }}>
+                    Aberto há {timeOpenText}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      setResolvingIssue(null);
+                      setResolutionPhotos([]);
+                      setPhotoSource(null);
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <X style={{ width: '1.25rem', height: '1.25rem' }} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Photo Source Selector */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Origem da Foto
+                </span>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoSource('camera')}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      padding: '0.75rem',
+                      borderRadius: '0.5rem',
+                      background: photoSource === 'camera' ? 'rgba(45, 140, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      border: sourceError 
+                        ? '1px solid #ef4444' 
+                        : (photoSource === 'camera' ? '1px solid #2d8cff' : '1px solid rgba(255, 255, 255, 0.08)'),
+                      color: photoSource === 'camera' ? '#2d8cff' : '#94a3b8',
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      minHeight: '44px',
+                      animation: sourceError ? 'shake 0.3s ease-in-out' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Camera style={{ width: '1.25rem', height: '1.25rem' }} />
+                    Câmera
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoSource('gallery')}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      padding: '0.75rem',
+                      borderRadius: '0.5rem',
+                      background: photoSource === 'gallery' ? 'rgba(45, 140, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      border: sourceError 
+                        ? '1px solid #ef4444' 
+                        : (photoSource === 'gallery' ? '1px solid #2d8cff' : '1px solid rgba(255, 255, 255, 0.08)'),
+                      color: photoSource === 'gallery' ? '#2d8cff' : '#94a3b8',
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      minHeight: '44px',
+                      animation: sourceError ? 'shake 0.3s ease-in-out' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <ImageIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                    Galeria
+                  </button>
+                </div>
+              </div>
+
+              {/* Photo grid */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Fotos da Resolução ({resolutionPhotos.length}/5)
+                </span>
+                
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(3, 1fr)', 
+                  gap: '0.75rem', 
+                  marginTop: '0.25rem' 
+                }}>
+                  {resolutionPhotos.map((photo, idx) => (
+                    <div 
+                      key={idx} 
+                      style={{ 
+                        position: 'relative', 
+                        aspectRatio: '1', 
+                        borderRadius: '0.5rem', 
+                        overflow: 'hidden', 
+                        border: '1px solid rgba(255, 255, 255, 0.1)' 
+                      }}
+                    >
+                      <img 
+                        src={photo} 
+                        alt={`Resolução ${idx + 1}`} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => removeResolutionPhoto(idx)}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          background: 'rgba(239, 68, 68, 0.85)',
+                          border: 'none',
+                          color: 'white',
+                          borderRadius: '50%',
+                          width: '1.5rem',
+                          height: '1.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          minWidth: '24px',
+                          minHeight: '24px',
+                          zIndex: 10
+                        }}
+                      >
+                        <X style={{ width: '0.875rem', height: '0.875rem' }} />
+                      </button>
+                    </div>
+                  ))}
+                  
+                  {resolutionPhotos.length < 5 && (
+                    <button
+                      type="button"
+                      onClick={handleAddClick}
+                      disabled={isUploadingPhotos}
                       style={{
-                        position: 'absolute',
-                        top: '2px',
-                        right: '2px',
-                        background: 'rgba(239, 68, 68, 0.9)',
-                        border: 'none',
-                        color: 'white',
-                        borderRadius: '50%',
-                        width: '1.25rem',
-                        height: '1.25rem',
+                        aspectRatio: '1',
+                        borderRadius: '0.5rem',
+                        border: sourceError ? '2px dashed #ef4444' : '2px dashed rgba(255, 255, 255, 0.1)',
+                        background: 'rgba(255, 255, 255, 0.01)',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <X style={{ width: '0.75rem', height: '0.75rem' }} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => document.getElementById('resolution-photo-input')?.click()}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.5rem',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                        fontSize: '0.8125rem',
-                        fontWeight: 600,
+                        gap: '0.25rem',
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.375rem'
+                        color: '#64748b',
+                        transition: 'all 0.15s ease',
+                        animation: sourceError ? 'shake 0.3s ease-in-out' : 'none',
+                        minHeight: '44px'
                       }}
                     >
-                      <Upload style={{ width: '0.875rem', height: '0.875rem' }} />
-                      Carregar Foto
+                      {isUploadingPhotos ? (
+                        <span style={{ fontSize: '0.75rem', color: '#2d8cff', fontWeight: 600 }}>Carregando...</span>
+                      ) : (
+                        <>
+                          <Plus style={{ width: '1.5rem', height: '1.5rem' }} />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Adicionar</span>
+                        </>
+                      )}
                     </button>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Sem foto anexada</span>
-                  </>
-                )}
-                <input 
-                  type="file" 
-                  id="resolution-photo-input" 
-                  accept="image/*" 
-                  capture="environment"
-                  onChange={handleResolutionPhotoChange}
-                  style={{ display: 'none' }}
-                />
+                  )}
+                </div>
+
+                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
+                  {resolutionPhotos.length === 0 ? 'nenhuma foto adicionada' : `${resolutionPhotos.length} foto(s) adicionada(s)`}
+                </span>
+              </div>
+
+              {/* Hidden File Inputs */}
+              <input 
+                type="file" 
+                id="resolution-camera-input" 
+                accept="image/*" 
+                capture="environment"
+                onChange={handleResolutionPhotoAdd}
+                style={{ display: 'none' }}
+              />
+              <input 
+                type="file" 
+                id="resolution-gallery-input" 
+                accept="image/*" 
+                onChange={handleResolutionPhotoAdd}
+                style={{ display: 'none' }}
+              />
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResolvingIssue(null);
+                    setResolutionPhotos([]);
+                    setPhotoSource(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    color: '#94a3b8',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    minHeight: '44px'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmResolution}
+                  disabled={isUploadingPhotos}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
+                    border: 'none',
+                    color: 'white',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(34, 197, 94, 0.25)',
+                    opacity: isUploadingPhotos ? 0.6 : 1,
+                    minHeight: '44px'
+                  }}
+                >
+                  Resolver
+                </button>
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button
-                onClick={() => {
-                  setResolvingIssue(null);
-                  setResolutionPhoto(null);
-                }}
-                style={{
-                  padding: '0.625rem 1.125rem',
-                  borderRadius: '0.5rem',
-                  background: 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: '#94a3b8',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmResolution}
-                disabled={isUploadingResolutionPhoto}
-                style={{
-                  padding: '0.625rem 1.125rem',
-                  borderRadius: '0.5rem',
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  border: 'none',
-                  color: 'white',
-                  fontSize: '0.875rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
-                  opacity: isUploadingResolutionPhoto ? 0.6 : 1
-                }}
-              >
-                Resolver
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
 
       {/* ── RESOLVED PHOTO LIGHTBOX ── */}
       {lightboxPhotoUrl && (
@@ -3204,6 +3367,31 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
           <div onClick={e => e.stopPropagation()} style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <img src={lightboxPhotoUrl} alt="Visualização da Resolução" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
           </div>
+        </div>
+      )}
+
+      {/* Floating success toast */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1100,
+          background: '#22c55e',
+          color: 'white',
+          padding: '0.75rem 1.5rem',
+          borderRadius: '50px',
+          fontWeight: 700,
+          fontSize: '0.9375rem',
+          boxShadow: '0 10px 25px rgba(34, 197, 94, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          animation: 'fade-in-up 0.25s ease-out'
+        }}>
+          <CheckCircle2 style={{ width: '1.25rem', height: '1.25rem' }} />
+          {toastMessage}
         </div>
       )}
 

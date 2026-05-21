@@ -75,7 +75,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     fetchUsers().then(setUsers);
   }, []);
 
-  const isRestrictedRole = ['QUALIDADE', 'GESTOR_QUALIDADE', 'PROCESSOS'].includes(currentUser.role);
+  const isRestrictedRole = ['QUALIDADE', 'PROCESSOS'].includes(currentUser.role);
 
   const filterByDate = (items: any[], startStr: string, endStr: string, field: string) => {
     if (!startStr && !endStr) return items;

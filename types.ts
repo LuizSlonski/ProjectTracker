@@ -131,8 +131,11 @@ export interface IssueRecord {
 
   // Workflow Status
   status?: 'ABERTA' | 'FINALIZADA'; // defaults to ABERTA if undefined
-  resolvedPhoto?: string; // Optional confirmation photo on resolution
+  resolvedPhoto?: string; // Optional confirmation photo on resolution (legacy single photo URL)
   resolvedAt?: string; // ISO timestamp when marked as resolved
+  resolvedBy?: string; // Name/username of the user who marked it resolved
+  timeOpen?: string; // Formatted duration open (e.g. "2h 30m" or "1d 4h")
+  resolvedPhotos?: string[]; // Array of up to 5 resolution photos
 }
 
 export interface InnovationRecord {

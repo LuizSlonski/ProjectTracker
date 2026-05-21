@@ -59,25 +59,54 @@ export const fetchAppState = async (): Promise<AppState> => {
       userId: p.user_id
     }));
 
-    const issues: IssueRecord[] = (issuesData || []).map((i: any) => ({
-      id: i.id,
-      projectNs: i.project_ns,
-      type: i.type,
-      description: i.description,
-      date: i.date,
-      reportedBy: i.reported_by,
-      timeSpent: Number(i.time_spent) || 0,
-      hourlyRate: Number(i.hourly_rate) || 0,
-      materialCost: Number(i.material_cost) || 0,
-      totalCost: Number(i.total_cost) || 0,
-      photos: i.photos || [],
-      peopleInvolved: Number(i.people_involved) || 1,
-      rootCause: i.root_cause || '',
-      correctiveAction: i.corrective_action || '',
-      status: i.status || 'ABERTA',
-      resolvedPhoto: i.resolved_photo || undefined,
-      resolvedAt: i.resolved_at || undefined
-    }));
+    const issues: IssueRecord[] = (issuesData || []).map((i: any) => {
+      let resolvedBy: string | undefined = undefined;
+      let timeOpen: string | undefined = undefined;
+      let resolvedPhotos: string[] = [];
+      let resolvedPhoto: string | undefined = undefined;
+
+      if (i.resolved_photo) {
+        const trimmed = i.resolved_photo.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            resolvedBy = parsed.resolved_by;
+            timeOpen = parsed.time_open;
+            resolvedPhotos = parsed.photos || [];
+            resolvedPhoto = resolvedPhotos[0] || undefined;
+          } catch (err) {
+            resolvedPhoto = i.resolved_photo;
+            resolvedPhotos = [i.resolved_photo];
+          }
+        } else {
+          resolvedPhoto = i.resolved_photo;
+          resolvedPhotos = [i.resolved_photo];
+        }
+      }
+
+      return {
+        id: i.id,
+        projectNs: i.project_ns,
+        type: i.type,
+        description: i.description,
+        date: i.date,
+        reportedBy: i.reported_by,
+        timeSpent: Number(i.time_spent) || 0,
+        hourlyRate: Number(i.hourly_rate) || 0,
+        materialCost: Number(i.material_cost) || 0,
+        totalCost: Number(i.total_cost) || 0,
+        photos: i.photos || [],
+        peopleInvolved: Number(i.people_involved) || 1,
+        rootCause: i.root_cause || '',
+        correctiveAction: i.corrective_action || '',
+        status: i.status || 'ABERTA',
+        resolvedPhoto,
+        resolvedAt: i.resolved_at || undefined,
+        resolvedBy,
+        timeOpen,
+        resolvedPhotos
+      };
+    });
 
     const innovations: InnovationRecord[] = (innovationsData || []).map((inv: any) => ({
       id: inv.id,
@@ -173,6 +202,14 @@ export const deleteProject = async (id: string): Promise<AppState> => {
 
 export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
   try {
+    const resolvedPhotoValue = (issue.resolvedPhotos && issue.resolvedPhotos.length > 0) || issue.resolvedBy || issue.timeOpen
+      ? JSON.stringify({
+          resolved_by: issue.resolvedBy,
+          time_open: issue.timeOpen,
+          photos: issue.resolvedPhotos || []
+        })
+      : issue.resolvedPhoto;
+
     const { error } = await supabase.from('issues').insert([{
       id: issue.id,
       project_ns: issue.projectNs,
@@ -189,7 +226,7 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
       root_cause: issue.rootCause,
       corrective_action: issue.correctiveAction,
       status: issue.status || 'ABERTA',
-      resolved_photo: issue.resolvedPhoto,
+      resolved_photo: resolvedPhotoValue,
       resolved_at: issue.resolvedAt
     }]);
 
@@ -203,6 +240,14 @@ export const addIssue = async (issue: IssueRecord): Promise<AppState> => {
 
 export const updateIssue = async (issue: IssueRecord): Promise<AppState> => {
   try {
+    const resolvedPhotoValue = (issue.resolvedPhotos && issue.resolvedPhotos.length > 0) || issue.resolvedBy || issue.timeOpen
+      ? JSON.stringify({
+          resolved_by: issue.resolvedBy,
+          time_open: issue.timeOpen,
+          photos: issue.resolvedPhotos || []
+        })
+      : issue.resolvedPhoto;
+
     const { error } = await supabase
       .from('issues')
       .update({
@@ -220,7 +265,7 @@ export const updateIssue = async (issue: IssueRecord): Promise<AppState> => {
         root_cause: issue.rootCause,
         corrective_action: issue.correctiveAction,
         status: issue.status,
-        resolved_photo: issue.resolvedPhoto,
+        resolved_photo: resolvedPhotoValue,
         resolved_at: issue.resolvedAt
       })
       .eq('id', issue.id);

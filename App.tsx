@@ -316,10 +316,55 @@ const App: React.FC = () => {
   }, []);
 
   // Auth State
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const sessionStr = localStorage.getItem('qt_session');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        if (session.expiresAt && session.expiresAt > Date.now() && session.user) {
+          return session.user;
+        } else {
+          localStorage.removeItem('qt_session');
+          localStorage.removeItem('qt_active_tab');
+        }
+      } catch (e) {
+        localStorage.removeItem('qt_session');
+        localStorage.removeItem('qt_active_tab');
+      }
+    }
+    return null;
+  });
 
   // App State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracker' | 'issues' | 'history' | 'team' | 'innovations'>('tracker');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'issues' | 'team'>(() => {
+    const lastTab = localStorage.getItem('qt_active_tab');
+    const sessionStr = localStorage.getItem('qt_session');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        if (session.expiresAt && session.expiresAt > Date.now() && session.user) {
+          const user = session.user;
+          const isQualidade = user.role === 'QUALIDADE';
+          const isGestorCeo = ['GESTOR', 'CEO', 'GESTOR_QUALIDADE'].includes(user.role);
+          
+          if (lastTab) {
+            let validTab = lastTab as any;
+            if (isQualidade && lastTab !== 'issues') {
+              validTab = 'issues';
+            } else if (!isGestorCeo && lastTab === 'team') {
+              validTab = 'issues';
+            } else if (validTab === 'tracker' || validTab === 'history' || validTab === 'innovations') {
+              validTab = isQualidade ? 'issues' : 'dashboard';
+            }
+            return validTab;
+          }
+          if (isQualidade) return 'issues';
+          return 'dashboard';
+        }
+      } catch (e) {}
+    }
+    return 'issues';
+  });
   const [issueTab, setIssueTab] = useState<'new' | 'history'>('new');
   const [data, setData] = useState<AppState>({ projects: [], issues: [], innovations: [] });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -337,21 +382,27 @@ const App: React.FC = () => {
     load();
   }, [currentUser]); 
 
+  // Save active tab to localStorage
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('qt_active_tab', activeTab);
+    }
+  }, [activeTab, currentUser]);
+
   // Auto-redirect based on role logic
   useEffect(() => {
       if (currentUser) {
-          if (currentUser.role === 'QUALIDADE' || currentUser.role === 'GESTOR_QUALIDADE') {
+          const role = currentUser.role;
+          const isQualidade = role === 'QUALIDADE';
+          const isGestorCeo = ['GESTOR', 'CEO', 'GESTOR_QUALIDADE'].includes(role);
+
+          if (isQualidade && activeTab !== 'issues') {
               setActiveTab('issues');
-          } else if (currentUser.role === 'PROCESSOS') {
-              setActiveTab('innovations');
-          } else if (currentUser.role === 'CEO') {
-              setActiveTab('dashboard'); // CEO defaults to dashboard
-          } else {
-              // GESTOR, PROJETISTA default to tracker
-              setActiveTab('tracker');
+          } else if (!isGestorCeo && activeTab === 'team') {
+              setActiveTab(isQualidade ? 'issues' : 'dashboard');
           }
       }
-  }, [currentUser]);
+  }, [currentUser, activeTab]);
 
   // --- PERMISSIONS LOGIC ---
   
@@ -383,12 +434,12 @@ const App: React.FC = () => {
     const role = currentUser.role;
 
     // "Super Viewers" - See everything in DB
-    if (['GESTOR', 'PROCESSOS', 'CEO'].includes(role)) {
+    if (['GESTOR', 'PROCESSOS', 'CEO', 'GESTOR_QUALIDADE'].includes(role)) {
       return data;
     }
 
     // QUALITY - Sees all Issues (to analyze), All Projects (for context in charts), No Innovations
-    if (role === 'QUALIDADE' || role === 'GESTOR_QUALIDADE') {
+    if (role === 'QUALIDADE') {
         return {
             projects: data.projects, // Needed for charts context
             issues: data.issues,
@@ -542,18 +593,57 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogin = (user: User) => {
+    const expiresAt = Date.now() + 8 * 60 * 60 * 1000; // 8 hours duration
+    const token = 'qt_' + Math.random().toString(36).substring(2);
+    localStorage.setItem('qt_session', JSON.stringify({
+      token,
+      user,
+      role: user.role,
+      expiresAt
+    }));
+    setCurrentUser(user);
+
+    // Dynamic initial page redirect
+    const lastTab = localStorage.getItem('qt_active_tab');
+    if (lastTab) {
+      const role = user.role;
+      const isQualidade = role === 'QUALIDADE';
+      const isGestorCeo = ['GESTOR', 'CEO', 'GESTOR_QUALIDADE'].includes(role);
+
+      let validTab = lastTab as any;
+      if (isQualidade && lastTab !== 'issues') {
+        validTab = 'issues';
+      } else if (!isGestorCeo && lastTab === 'team') {
+        validTab = 'issues';
+      } else if (validTab === 'tracker' || validTab === 'history' || validTab === 'innovations') {
+        validTab = isQualidade ? 'issues' : 'dashboard';
+      }
+      setActiveTab(validTab);
+    } else {
+      if (user.role === 'QUALIDADE') {
+        setActiveTab('issues');
+      } else if (['CEO', 'GESTOR', 'GESTOR_QUALIDADE'].includes(user.role)) {
+        setActiveTab('dashboard');
+      } else {
+        setActiveTab('issues');
+      }
+    }
+  };
+
   const handleLogout = () => {
+    localStorage.removeItem('qt_session');
+    localStorage.removeItem('qt_active_tab');
     setCurrentUser(null);
-    // Reset to tracker but effective login will handle redirection
     setActiveTab('tracker');
   };
 
   if (!currentUser) {
-    return <Login onLogin={setCurrentUser} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   if (currentUser.needsPasswordChange) {
-    return <ForcePasswordChange user={currentUser} onSuccess={setCurrentUser} />;
+    return <ForcePasswordChange user={currentUser} onSuccess={handleLogin} />;
   }
 
   const triggerVibration = () => {
@@ -590,12 +680,9 @@ const App: React.FC = () => {
 
   // Tabs available for mobile bottom nav
   const mobileNavItems = [
-    ...(canUseTracker ? [{ id: 'tracker' as const, label: 'Projetar', icon: PenTool }] : []),
-    ...(canUseTracker ? [{ id: 'history' as const, label: 'Histórico', icon: History }] : []),
-    { id: 'dashboard' as const, label: 'Gráficos', icon: LayoutDashboard },
+    ...(currentUser.role !== 'QUALIDADE' ? [{ id: 'dashboard' as const, label: 'Gráficos', icon: LayoutDashboard }] : []),
     { id: 'issues' as const, label: 'Qualidade', icon: AlertOctagon },
-    ...(canSeeInnovations ? [{ id: 'innovations' as const, label: 'Inovações', icon: Lightbulb }] : []),
-    ...(['GESTOR', 'CEO'].includes(currentUser.role) ? [{ id: 'team' as const, label: 'Equipe', icon: Users }] : []),
+    ...(['GESTOR', 'CEO', 'GESTOR_QUALIDADE'].includes(currentUser.role) ? [{ id: 'team' as const, label: 'Equipe', icon: Users }] : []),
   ];
 
   const hasOverflow = mobileNavItems.length > 5;
@@ -636,12 +723,9 @@ const App: React.FC = () => {
         </div>
 
         <nav style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0' }}>
-          {canUseTracker && <NavItem id="tracker" label="Projetar" icon={PenTool} />}
-          {canUseTracker && <NavItem id="history" label="Histórico" icon={History} />}
-          <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />
+          {currentUser.role !== 'QUALIDADE' && <NavItem id="dashboard" label="Painel & Gráficos" icon={LayoutDashboard} />}
           <NavItem id="issues" label="Qualidade" icon={AlertOctagon} />
-          {canSeeInnovations && <NavItem id="innovations" label="Inovações & Custos" icon={Lightbulb} />}
-          {['GESTOR', 'CEO'].includes(currentUser.role) && <NavItem id="team" label="Gestão de Equipe" icon={Users} />}
+          {['GESTOR', 'CEO', 'GESTOR_QUALIDADE'].includes(currentUser.role) && <NavItem id="team" label="Gestão de Equipe" icon={Users} />}
         </nav>
 
         <div style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
@@ -862,31 +946,8 @@ const App: React.FC = () => {
 
             return (
               <>
-                {/* Tracker */}
-                <div className={activeTab === 'tracker' && canUseTracker ? 'block' : 'hidden'}>
-                  <PageHeader
-                    title="Área de Projeto"
-                    subtitle={`Bem-vindo, ${currentUser.name}`}
-                  />
-                  <ProjectTracker
-                    existingProjects={displayData.projects}
-                    onCreate={handleProjectCreate}
-                    onUpdate={handleProjectUpdate}
-                    isVisible={activeTab === 'tracker'}
-                    onNavigateBack={() => setActiveTab('tracker')}
-                  />
-                </div>
-
-                {/* History */}
-                {activeTab === 'history' && canUseTracker && (
-                  <div>
-                    <PageHeader
-                      title="Histórico de Liberações"
-                      subtitle={canSeeAllHistory ? 'Visão geral de todas as liberações da equipe.' : 'Suas liberações passadas.'}
-                    />
-                    <ProjectHistory data={displayData} currentUser={currentUser} onDelete={handleProjectDelete} />
-                  </div>
-                )}
+                {/* Tracker removed */}
+                {/* History removed */}
 
                 {/* Dashboard */}
                 {activeTab === 'dashboard' && (
@@ -930,23 +991,7 @@ const App: React.FC = () => {
             );
           })()}
 
-          {activeTab === 'innovations' && canSeeInnovations && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Inovações & Custos</h2>
-                  <p style={{ margin: '0.125rem 0 0', fontSize: '0.8125rem', color: '#475569' }}>Gerencie propostas e economias aprovadas.</p>
-                </div>
-              </div>
-              <InnovationManager
-                innovations={displayData.innovations}
-                onAdd={handleInnovationAdd}
-                onStatusChange={handleInnovationStatusChange}
-                onDelete={handleInnovationDelete}
-                currentUser={currentUser}
-              />
-            </div>
-          )}
+          {/* Innovations removed */}
 
           {activeTab === 'team' && ['GESTOR', 'CEO'].includes(currentUser.role) && (
             <div>
