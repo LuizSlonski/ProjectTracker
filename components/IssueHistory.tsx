@@ -280,6 +280,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   const [resolutionPhoto, setResolutionPhoto] = useState<string | null>(null);
   const [isUploadingResolutionPhoto, setIsUploadingResolutionPhoto] = useState(false);
   const [lightboxPhotoUrl, setLightboxPhotoUrl] = useState<string | null>(null);
+  const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([]);
+  const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number>(0);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   // Advanced feature state extensions
@@ -1492,7 +1494,10 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                       <button
                         onClick={e => {
                           e.stopPropagation();
-                          setLightboxPhotoUrl(issue.resolvedPhoto || issue.resolvedPhotos?.[0] || null);
+                          const photos = issue.resolvedPhotos || (issue.resolvedPhoto ? [issue.resolvedPhoto] : []);
+                          setLightboxPhotos(photos);
+                          setLightboxPhotoIndex(0);
+                          setLightboxPhotoUrl(photos[0] || null);
                         }}
                         style={{
                           background: 'rgba(34, 197, 94, 0.1)',
@@ -2594,50 +2599,63 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                     )}
                   </div>
 
-                  {/* Resolution photo if exists */}
-                  {selectedIssueForDetail.status === 'FINALIZADA' && selectedIssueForDetail.resolvedPhoto && (
-                    <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '0.75rem' }}>
-                      <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Foto de Confirmação</span>
-                      <div 
-                        onClick={() => {
-                          setLightboxPhotoUrl(selectedIssueForDetail.resolvedPhoto || null);
-                        }}
-                        style={{
-                          width: '120px',
-                          height: '90px',
-                          borderRadius: '0.5rem',
-                          overflow: 'hidden',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          cursor: 'zoom-in',
-                          position: 'relative',
-                          transition: 'transform 0.18s ease'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                      >
-                        <img 
-                          src={selectedIssueForDetail.resolvedPhoto} 
-                          alt="Foto de Confirmação"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'rgba(0,0,0,0.3)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: 0,
-                          transition: 'opacity 0.2s ease'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                        onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                        >
-                          <Camera style={{ width: '1.25rem', height: '1.25rem', color: 'white' }} />
+                  {/* Resolution photos if exists */}
+                  {(() => {
+                    const resPhotos = selectedIssueForDetail.resolvedPhotos || (selectedIssueForDetail.resolvedPhoto ? [selectedIssueForDetail.resolvedPhoto] : []);
+                    if (selectedIssueForDetail.status !== 'FINALIZADA' || resPhotos.length === 0) return null;
+                    return (
+                      <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '0.75rem' }}>
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                          {resPhotos.length > 1 ? 'Fotos de Confirmação' : 'Foto de Confirmação'} ({resPhotos.length})
+                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {resPhotos.map((photo, pIdx) => (
+                            <div 
+                              key={pIdx}
+                              onClick={() => {
+                                setLightboxPhotos(resPhotos);
+                                setLightboxPhotoIndex(pIdx);
+                                setLightboxPhotoUrl(photo);
+                              }}
+                              style={{
+                                width: '80px',
+                                height: '60px',
+                                borderRadius: '0.375rem',
+                                overflow: 'hidden',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                cursor: 'zoom-in',
+                                position: 'relative',
+                                transition: 'transform 0.18s ease'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                              <img 
+                                src={photo} 
+                                alt={`Confirmação ${pIdx + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                              <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'rgba(0,0,0,0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: 0,
+                                transition: 'opacity 0.2s ease'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                              onMouseLeave={e => e.currentTarget.style.opacity = 0}
+                              >
+                                <Camera style={{ width: '1rem', height: '1rem', color: 'white' }} />
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -3327,12 +3345,16 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       {/* ── RESOLVED PHOTO LIGHTBOX ── */}
       {lightboxPhotoUrl && (
         <div 
-          onClick={() => setLightboxPhotoUrl(null)} 
+          onClick={() => {
+            setLightboxPhotoUrl(null);
+            setLightboxPhotos([]);
+          }} 
           style={{ 
             position: 'fixed', 
             inset: 0, 
             zIndex: 1200, 
             display: 'flex', 
+            flexDirection: 'column',
             alignItems: 'center', 
             justifyContent: 'center', 
             background: 'rgba(2, 6, 23, 0.95)', 
@@ -3342,8 +3364,12 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
             userSelect: 'none'
           }}
         >
+          {/* Close button with high-contrast safe area overlay */}
           <button 
-            onClick={() => setLightboxPhotoUrl(null)} 
+            onClick={() => {
+              setLightboxPhotoUrl(null);
+              setLightboxPhotos([]);
+            }} 
             style={{
               position: 'absolute',
               top: '1.5rem',
@@ -3360,13 +3386,180 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               justifyContent: 'center',
               boxShadow: '0 12px 36px rgba(0,0,0,0.6)',
               backdropFilter: 'blur(8px)',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              zIndex: 1220
+            }}
+            onMouseEnter={e => { 
+              e.currentTarget.style.transform = 'scale(1.08)'; 
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.85)'; 
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)'; 
+            }}
+            onMouseLeave={e => { 
+              e.currentTarget.style.transform = 'scale(1)'; 
+              e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'; 
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; 
             }}
           >
             <X style={{ width: '1.5rem', height: '1.5rem' }} />
           </button>
-          <div onClick={e => e.stopPropagation()} style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <img src={lightboxPhotoUrl} alt="Visualização da Resolução" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
+
+          {/* Carousel container */}
+          <div 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              position: 'relative', 
+              width: '100%', 
+              maxWidth: '900px', 
+              height: '70vh', 
+              maxHeight: '650px',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              borderRadius: '1.25rem',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Left arrow trigger */}
+            {lightboxPhotos.length > 1 && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const newIndex = (lightboxPhotoIndex - 1 + lightboxPhotos.length) % lightboxPhotos.length;
+                  setLightboxPhotoIndex(newIndex);
+                  setLightboxPhotoUrl(lightboxPhotos[newIndex]);
+                }} 
+                style={{
+                  position: 'absolute',
+                  left: '1rem',
+                  color: 'white',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '50%',
+                  width: '3.25rem',
+                  height: '3.25rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  transition: 'all 0.2s ease',
+                  zIndex: 1215
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.background = 'rgba(34, 197, 94, 0.8)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.65)'; }}
+              >
+                <ChevronLeft style={{ width: '1.75rem', height: '1.75rem' }} />
+              </button>
+            )}
+
+            {/* Carousel active image */}
+            <img 
+              src={lightboxPhotoUrl} 
+              alt={`Confirmação ${lightboxPhotoIndex + 1}`} 
+              style={{ 
+                maxWidth: '100%', 
+                maxHeight: '100%', 
+                objectFit: 'contain', 
+                borderRadius: '0.75rem', 
+                boxShadow: '0 25px 60px rgba(0,0,0,0.85)'
+              }} 
+            />
+
+            {/* Right arrow trigger */}
+            {lightboxPhotos.length > 1 && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const newIndex = (lightboxPhotoIndex + 1) % lightboxPhotos.length;
+                  setLightboxPhotoIndex(newIndex);
+                  setLightboxPhotoUrl(lightboxPhotos[newIndex]);
+                }} 
+                style={{
+                  position: 'absolute',
+                  right: '1rem',
+                  color: 'white',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '50%',
+                  width: '3.25rem',
+                  height: '3.25rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  transition: 'all 0.2s ease',
+                  zIndex: 1215
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.background = 'rgba(34, 197, 94, 0.8)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(15, 23, 42, 0.65)'; }}
+              >
+                <ChevronRight style={{ width: '1.75rem', height: '1.75rem' }} />
+              </button>
+            )}
+          </div>
+
+          {/* Carousel footer stats and dots */}
+          <div 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              marginTop: '1.5rem', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              zIndex: 1210
+            }}
+          >
+            {/* Carousel badge info */}
+            {lightboxPhotos.length > 0 && (
+              <span style={{ 
+                fontSize: '0.75rem', 
+                fontWeight: 700, 
+                color: '#94a3b8', 
+                background: 'rgba(30, 41, 59, 0.6)', 
+                padding: '0.375rem 1rem', 
+                borderRadius: '9999px',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em'
+              }}>
+                FOTO DE CONFIRMAÇÃO {lightboxPhotoIndex + 1} DE {lightboxPhotos.length}
+              </span>
+            )}
+
+            {/* Dots */}
+            {lightboxPhotos.length > 1 && (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {lightboxPhotos.map((_, idx) => {
+                  const isActive = idx === lightboxPhotoIndex;
+                  return (
+                    <button 
+                      key={idx}
+                      onClick={() => {
+                        setLightboxPhotoIndex(idx);
+                        setLightboxPhotoUrl(lightboxPhotos[idx]);
+                      }}
+                      style={{
+                        width: isActive ? '1.25rem' : '0.5rem',
+                        height: '0.5rem',
+                        borderRadius: '9999px',
+                        border: 'none',
+                        background: isActive ? '#22c55e' : 'rgba(255, 255, 255, 0.25)',
+                        boxShadow: isActive ? '0 0 10px rgba(34, 197, 94, 0.5)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.24s cubic-bezier(0.4, 0, 0.2, 1)',
+                        padding: 0
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
