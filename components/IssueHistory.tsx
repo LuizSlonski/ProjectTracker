@@ -817,26 +817,27 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
           background: 'rgba(22, 27, 34, 0.6)',
           border: '1px solid rgba(255, 255, 255, 0.05)',
           borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
+          padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.625rem',
+          gap: isMobile ? '0.375rem' : '0.625rem',
           backdropFilter: 'blur(12px)',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
         }}>
           <div style={{
-            width: '10px',
-            height: '10px',
+            width: isMobile ? '8px' : '10px',
+            height: isMobile ? '8px' : '10px',
             borderRadius: '50%',
             background: '#ef4444',
             boxShadow: '0 0 10px #ef4444',
-            display: 'inline-block'
+            display: 'inline-block',
+            flexShrink: 0
           }} className="status-dot" />
-          <div>
-            <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              🔴 Em Aberto
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: isMobile ? '0.625rem' : '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.1 }}>
+              Em Aberto
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+            <div style={{ fontSize: isMobile ? '1.125rem' : '1.25rem', fontWeight: 800, color: 'white', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px', lineHeight: 1.1 }}>
               {globalStats.open}
             </div>
           </div>
@@ -847,19 +848,19 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
           background: 'rgba(22, 27, 34, 0.6)',
           border: '1px solid rgba(255, 255, 255, 0.05)',
           borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
+          padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.625rem',
+          gap: isMobile ? '0.375rem' : '0.625rem',
           backdropFilter: 'blur(12px)',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
         }}>
-          <AlertTriangle style={{ width: '1.25rem', height: '1.25rem', color: '#f0a500' }} />
-          <div>
-            <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              ⚠️ Reincidências
+          <AlertTriangle style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem', color: '#f0a500', flexShrink: 0 }} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: isMobile ? '0.625rem' : '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.1 }}>
+              Reincidências
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f0a500', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+            <div style={{ fontSize: isMobile ? '1.125rem' : '1.25rem', fontWeight: 800, color: '#f0a500', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px', lineHeight: 1.1 }}>
               {globalStats.reinc}
             </div>
           </div>
@@ -870,20 +871,20 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
           background: 'rgba(22, 27, 34, 0.6)',
           border: '1px solid rgba(255, 255, 255, 0.05)',
           borderRadius: '0.75rem',
-          padding: '0.625rem 0.875rem',
+          padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.625rem',
+          gap: isMobile ? '0.375rem' : '0.625rem',
           backdropFilter: 'blur(12px)',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
           gridColumn: (isMobile && !showCost) ? 'span 2' : 'auto'
         }}>
-          <Clock style={{ width: '1.25rem', height: '1.25rem', color: '#10b981' }} />
-          <div>
-            <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-              ⏱ T. Médio Resolução
+          <Clock style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem', color: '#10b981', flexShrink: 0 }} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: isMobile ? '0.625rem' : '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.1 }}>
+              {isMobile ? 'Tempo Médio' : 'T. Médio Resolução'}
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+            <div style={{ fontSize: isMobile ? '1.125rem' : '1.25rem', fontWeight: 800, color: '#10b981', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px', lineHeight: 1.1 }}>
               {avgResolutionTimeStr}
             </div>
           </div>
@@ -895,19 +896,19 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
             background: 'rgba(22, 27, 34, 0.6)',
             border: '1px solid rgba(255, 255, 255, 0.05)',
             borderRadius: '0.75rem',
-            padding: '0.625rem 0.875rem',
+            padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.625rem',
+            gap: isMobile ? '0.375rem' : '0.625rem',
             backdropFilter: 'blur(12px)',
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
           }}>
-            <DollarSign style={{ width: '1.25rem', height: '1.25rem', color: '#22c55e' }} />
-            <div>
-              <div style={{ fontSize: '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-                💰 Custo Total
+            <DollarSign style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem', color: '#22c55e', flexShrink: 0 }} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: isMobile ? '0.625rem' : '0.72rem', color: '#8c909f', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.1 }}>
+                Custo Total
               </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#22c55e', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px' }}>
+              <div style={{ fontSize: isMobile ? '1.125rem' : '1.25rem', fontWeight: 800, color: '#22c55e', fontFamily: "'JetBrains Mono', monospace", marginTop: '2px', lineHeight: 1.1 }}>
                 {fmtCurrency(globalStats.totalCost)}
               </div>
             </div>

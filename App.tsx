@@ -11,6 +11,7 @@ import InnovationManager from './components/InnovationManager';
 import { Login } from './components/Login';
 import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { 
+  supabase,
   fetchAppState, 
   addProject, 
   updateProject, 
@@ -371,16 +372,63 @@ const App: React.FC = () => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load data when user logs in or mounts
+  // Load data when user logs in or mounts, and listen for realtime updates + polling
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      const appData = await fetchAppState();
-      setData(appData);
-      setIsLoading(false);
+    let active = true;
+
+    const load = async (showLoading = false) => {
+      if (showLoading) setIsLoading(true);
+      try {
+        const appData = await fetchAppState();
+        if (active) {
+          setData(prev => {
+            // Only update state if data actually changed to prevent unnecessary re-renders
+            if (JSON.stringify(prev) === JSON.stringify(appData)) {
+              return prev;
+            }
+            return appData;
+          });
+        }
+      } catch (err) {
+        console.error("Error loading app state:", err);
+      } finally {
+        if (showLoading && active) setIsLoading(false);
+      }
     };
-    load();
-  }, [currentUser]); 
+
+    load(true);
+
+    // 1. Supabase Realtime channel
+    const channel = supabase
+      .channel('realtime-qualitytracker')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'issues' },
+        () => { load(false); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'projects' },
+        () => { load(false); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'innovations' },
+        () => { load(false); }
+      )
+      .subscribe();
+
+    // 2. Poll fallback (every 5 seconds) to ensure real-time updates even if Realtime is not active on DB
+    const pollInterval = setInterval(() => {
+      load(false);
+    }, 5000);
+
+    return () => {
+      active = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
 
   // Save active tab to localStorage
   useEffect(() => {
@@ -690,7 +738,16 @@ const App: React.FC = () => {
   const isMoreActive = hasOverflow && !visibleMobileItems.some(item => item.id === activeTab);
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#020617' }}>
+    <div 
+      className="flex flex-col md:flex-row min-h-screen" 
+      style={{ 
+        background: '#020617', 
+        width: '100%', 
+        maxWidth: '100vw', 
+        overflowX: 'hidden',
+        position: 'relative'
+      }}
+    >
       {/* ── Sidebar — Industrial Precision design ── */}
       <aside className="hidden md:flex flex-col w-64 fixed h-full z-10" style={{
         background: 'rgba(10, 13, 21, 0.97)',
@@ -910,9 +967,13 @@ const App: React.FC = () => {
         className="flex-1 md:ml-64 min-h-screen"
         style={{
           background: '#020617',
-          padding: '1.5rem',
+          padding: isDesktop ? '1.5rem' : '1rem',
           paddingTop: isDesktop ? '1.5rem' : 'calc(4.5rem + env(safe-area-inset-top, 0px))',
           paddingBottom: isDesktop ? '1.5rem' : 'calc(5.5rem + env(safe-area-inset-bottom, 0px))',
+          width: '100%',
+          maxWidth: isDesktop ? 'calc(100% - 16rem)' : '100%',
+          overflowX: 'hidden',
+          boxSizing: 'border-box'
         }}
       >
         {isLoading && <ModernLoader logoUrl={COMPANY_LOGO_URL} />}
