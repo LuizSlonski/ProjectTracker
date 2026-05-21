@@ -571,17 +571,27 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
 
   const handleResolutionPhotoAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
-    const file = e.target.files[0];
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Erro: O arquivo excede o limite de 5MB.');
+    const files = Array.from(e.target.files) as File[];
+    
+    if (resolutionPhotos.length + files.length > 5) {
+      alert(`Erro: Você só pode adicionar no máximo 5 fotos de confirmação. Limite restante: ${5 - resolutionPhotos.length}`);
+      e.target.value = '';
       return;
     }
+
+    const invalidFile = files.find(file => file.size > 5 * 1024 * 1024);
+    if (invalidFile) {
+      alert(`Erro: O arquivo "${invalidFile.name}" excede o limite de 5MB.`);
+      e.target.value = '';
+      return;
+    }
+
     setIsUploadingPhotos(true);
     try {
-      const url = await uploadPhoto(file);
-      setResolutionPhotos(prev => [...prev, url]);
-    } catch {
-      alert('Erro ao carregar imagem de resolução.');
+      const urls = await Promise.all(files.map(file => uploadPhoto(file)));
+      setResolutionPhotos(prev => [...prev, ...urls]);
+    } catch (err) {
+      alert('Erro ao carregar uma ou mais imagens de resolução.');
     } finally {
       setIsUploadingPhotos(false);
       e.target.value = '';
@@ -3287,6 +3297,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
                 type="file" 
                 id="resolution-gallery-input" 
                 accept="image/*" 
+                multiple
                 onChange={handleResolutionPhotoAdd}
                 style={{ display: 'none' }}
               />
