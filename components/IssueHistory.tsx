@@ -9,6 +9,7 @@ import { AppState, IssueType, User, IssueRecord } from '../types';
 import { ISSUE_TYPES, ROOT_CAUSES } from '../constants';
 import { fetchUsers, updateIssue, uploadPhoto, deletePhotoFromBucket } from '../services/storageService';
 import logoImage from '../src/assets/logo.png';
+import { CustomDatePicker } from './CustomDatePicker';
 
 interface IssueHistoryProps {
   data: AppState;
@@ -1130,16 +1131,16 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
           {(!isMobile || showMobileDates) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: isMobile ? '1 1 auto' : '1.5 1 300px' }}>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                  className="dark-input font-sans" style={{ ...inputStyle, flex: 1, minHeight: '40px' }}
-                  title="Data inicial"
+                <CustomDatePicker
+                  value={startDate}
+                  onChange={setStartDate}
+                  placeholder="Data inicial"
                 />
                 <span style={{ color: '#8c909f', fontSize: '0.8125rem' }}>até</span>
-                <input
-                  type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                  className="dark-input font-sans" style={{ ...inputStyle, flex: 1, minHeight: '40px' }}
-                  title="Data final"
+                <CustomDatePicker
+                  value={endDate}
+                  onChange={setEndDate}
+                  placeholder="Data final"
                 />
               </div>
               

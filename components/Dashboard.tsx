@@ -8,6 +8,7 @@ import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, Tren
 import { AppState, User } from '../types';
 import { analyzePerformance } from '../services/geminiService';
 import { fetchUsers } from '../services/storageService';
+import { CustomDatePicker } from './CustomDatePicker';
 
 interface DashboardProps {
   data: AppState;
@@ -260,14 +261,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   };
 
   const DatePicker = ({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: '130px' }}>
-      <span style={S.label}>{label}</span>
-      <input
-        type="date" value={value} onChange={e => onChange(e.target.value)}
-        className="dark-input"
-        style={{ padding: '0.5rem 0.75rem', borderRadius: '0.625rem', fontSize: '0.8125rem', width: '100%' }}
-      />
-    </div>
+    <CustomDatePicker value={value} onChange={onChange} label={label} />
   );
 
   const CustomTooltip = ({ active, payload, label }: any) => {
