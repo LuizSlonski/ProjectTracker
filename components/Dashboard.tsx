@@ -338,9 +338,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       'Custo Total (R$)',
       'Tempo Gasto (Minutos)',
       'Data de Abertura',
-      'Fotos de Abertura',
+      'Foto Abertura 1',
+      'Foto Abertura 2',
+      'Foto Abertura 3',
       'Data de Resolução',
-      'Fotos de Resolução',
+      'Foto Resolução 1',
+      'Foto Resolução 2',
+      'Foto Resolução 3',
       'É Reincidência?'
     ];
 
@@ -363,22 +367,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         return d.toLocaleString('pt-BR');
       };
 
-      const formatExcelPhotos = (photoList?: string[]) => {
-        if (!photoList || photoList.length === 0) return '""';
-        if (photoList.length === 1) {
-          // Retorna a fórmula do hyperlink encapsulada em aspas duplas para o CSV,
-          // com aspas internas duplicadas para que o Excel interprete corretamente.
-          return `"=HIPERLINK(""${photoList[0]}""; ""Foto"")"`;
+      const getPhotoHyperlinks = (photoList: string[]) => {
+        const cells: string[] = [];
+        for (let i = 0; i < 3; i++) {
+          if (photoList && photoList[i]) {
+            cells.push(`"=HIPERLINK(""${photoList[i]}""; ""Foto"")"`);
+          } else {
+            cells.push('""');
+          }
         }
-        // Como o Excel só suporta 1 link funcional por célula e concatenar múltiplas fórmulas
-        // HIPERLINK causa erro 404 de mesclagem de URL, criamos um link limpo para a primeira foto
-        // indicando que existem mais fotos cadastradas para a ocorrência.
-        return `"=HIPERLINK(""${photoList[0]}""; ""Foto (1 de ${photoList.length})"")"`;
+        return cells;
       };
 
       const reinc = isReincidencia(issue, data.issues) ? 'Sim' : 'Não';
       const openingPhotos = issue.photos || [];
       const resPhotos = issue.resolvedPhotos || (issue.resolvedPhoto ? [issue.resolvedPhoto] : []);
+      const openingPhotoCells = getPhotoHyperlinks(openingPhotos);
+      const resPhotoCells = getPhotoHyperlinks(resPhotos);
 
       return [
         sanitize(issue.projectNs),
@@ -392,9 +397,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         costStr,
         issue.timeSpent || '',
         formatExcelDate(issue.date),
-        formatExcelPhotos(openingPhotos),
+        ...openingPhotoCells,
         issue.status === 'FINALIZADA' ? formatExcelDate(issue.resolvedAt || issue.date) : '',
-        formatExcelPhotos(resPhotos),
+        ...resPhotoCells,
         reinc
       ].join(';');
     });
