@@ -295,9 +295,109 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
             <Filter style={{ width: '1rem', height: '1rem', color: '#3b82f6' }} />
             Período de Análise
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', flex: 1, maxWidth: '500px' }}>
-            <DatePicker value={startDate} onChange={setStartDate} label="De" />
-            <DatePicker value={endDate} onChange={setEndDate} label="Até" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, maxWidth: '500px' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <DatePicker value={startDate} onChange={setStartDate} label="De" />
+              <DatePicker value={endDate} onChange={setEndDate} label="Até" />
+            </div>
+            
+            {/* Presets */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+              {[
+                { label: 'Últimos 30 dias', value: '30days' },
+                { label: 'Mês Atual', value: 'current' },
+                { label: 'Mês Passado', value: 'last' },
+                { label: 'Limpar', value: 'clear' }
+              ].map(preset => {
+                const toLocalDateString = (d: Date) => {
+                  const year = d.getFullYear();
+                  const month = String(d.getMonth() + 1).padStart(2, '0');
+                  const day = String(d.getDate()).padStart(2, '0');
+                  return `${year}-${month}-${day}`;
+                };
+
+                const applyPreset = () => {
+                  if (preset.value === 'clear') {
+                    setStartDate('');
+                    setEndDate('');
+                    return;
+                  }
+                  const today = new Date();
+                  if (preset.value === '30days') {
+                    const past30 = new Date();
+                    past30.setDate(today.getDate() - 30);
+                    setStartDate(toLocalDateString(past30));
+                    setEndDate(toLocalDateString(today));
+                  } else if (preset.value === 'current') {
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    setStartDate(toLocalDateString(firstDay));
+                    setEndDate(toLocalDateString(lastDay));
+                  } else if (preset.value === 'last') {
+                    const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                    setStartDate(toLocalDateString(firstDayLastMonth));
+                    setEndDate(toLocalDateString(lastDayLastMonth));
+                  }
+                };
+
+                // Check if this preset matches active filters to highlight it
+                let isActive = false;
+                const today = new Date();
+                if (preset.value === '30days' && startDate && endDate) {
+                  const past30 = new Date();
+                  past30.setDate(today.getDate() - 30);
+                  isActive = startDate === toLocalDateString(past30) && endDate === toLocalDateString(today);
+                } else if (preset.value === 'current' && startDate && endDate) {
+                  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                  isActive = startDate === toLocalDateString(firstDay) && endDate === toLocalDateString(lastDay);
+                } else if (preset.value === 'last' && startDate && endDate) {
+                  const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                  const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                  isActive = startDate === toLocalDateString(firstDayLastMonth) && endDate === toLocalDateString(lastDayLastMonth);
+                } else if (preset.value === 'clear') {
+                  isActive = !startDate && !endDate;
+                }
+
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={applyPreset}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: isActive ? '1px solid rgba(45, 140, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+                      background: isActive ? 'rgba(45, 140, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      color: isActive ? '#60a5fa' : '#8c909f',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      minHeight: '28px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    onMouseEnter={e => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        e.currentTarget.style.color = '#cbd5e1';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                        e.currentTarget.style.color = '#8c909f';
+                      }
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {!isRestrictedRole && (
