@@ -475,8 +475,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       let matchDate = true;
       if (startDate || endDate) {
         const d = new Date(issue.date).getTime();
-        const s = startDate ? new Date(startDate).getTime() : 0;
-        const e = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Infinity;
+        const s = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
+        const e = endDate ? new Date(endDate + 'T23:59:59.999').getTime() : Infinity;
         matchDate = d >= s && d <= e;
       }
       const matchReincident = filterReincident ? isReincidencia(issue, data.issues) : true;
@@ -1128,18 +1128,118 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
 
           {/* Date range picker (always on desktop, toggleable on mobile) */}
           {(!isMobile || showMobileDates) && (
-            <div style={{ display: 'flex', gap: '0.5rem', flex: isMobile ? '1 1 auto' : '1.5 1 300px' }}>
-              <input
-                type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="dark-input font-sans" style={{ ...inputStyle, flex: 1 }}
-                title="Data inicial"
-              />
-              <span style={{ display: 'flex', alignItems: 'center', color: '#8c909f', fontSize: '0.8125rem' }}>até</span>
-              <input
-                type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="dark-input font-sans" style={{ ...inputStyle, flex: 1 }}
-                title="Data final"
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: isMobile ? '1 1 auto' : '1.5 1 300px' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                  className="dark-input font-sans" style={{ ...inputStyle, flex: 1, minHeight: '40px' }}
+                  title="Data inicial"
+                />
+                <span style={{ color: '#8c909f', fontSize: '0.8125rem' }}>até</span>
+                <input
+                  type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                  className="dark-input font-sans" style={{ ...inputStyle, flex: 1, minHeight: '40px' }}
+                  title="Data final"
+                />
+              </div>
+              
+              {/* Presets */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                {[
+                  { label: 'Últimos 30 dias', value: '30days' },
+                  { label: 'Mês Atual', value: 'current' },
+                  { label: 'Mês Passado', value: 'last' },
+                  { label: 'Limpar', value: 'clear' }
+                ].map(preset => {
+                  const toLocalDateString = (d: Date) => {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                  };
+
+                  const applyPreset = () => {
+                    if (preset.value === 'clear') {
+                      setStartDate('');
+                      setEndDate('');
+                      return;
+                    }
+                    const today = new Date();
+                    if (preset.value === '30days') {
+                      const past30 = new Date();
+                      past30.setDate(today.getDate() - 30);
+                      setStartDate(toLocalDateString(past30));
+                      setEndDate(toLocalDateString(today));
+                    } else if (preset.value === 'current') {
+                      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                      setStartDate(toLocalDateString(firstDay));
+                      setEndDate(toLocalDateString(lastDay));
+                    } else if (preset.value === 'last') {
+                      const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                      const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                      setStartDate(toLocalDateString(firstDayLastMonth));
+                      setEndDate(toLocalDateString(lastDayLastMonth));
+                    }
+                  };
+
+                  // Check if this preset matches active filters to highlight it
+                  let isActive = false;
+                  const today = new Date();
+                  if (preset.value === '30days' && startDate && endDate) {
+                    const past30 = new Date();
+                    past30.setDate(today.getDate() - 30);
+                    isActive = startDate === toLocalDateString(past30) && endDate === toLocalDateString(today);
+                  } else if (preset.value === 'current' && startDate && endDate) {
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    isActive = startDate === toLocalDateString(firstDay) && endDate === toLocalDateString(lastDay);
+                  } else if (preset.value === 'last' && startDate && endDate) {
+                    const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                    isActive = startDate === toLocalDateString(firstDayLastMonth) && endDate === toLocalDateString(lastDayLastMonth);
+                  } else if (preset.value === 'clear') {
+                    isActive = !startDate && !endDate;
+                  }
+
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={applyPreset}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: isActive ? '1px solid rgba(45, 140, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+                        background: isActive ? 'rgba(45, 140, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        color: isActive ? '#60a5fa' : '#8c909f',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        minHeight: '28px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onMouseEnter={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                          e.currentTarget.style.color = '#cbd5e1';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                          e.currentTarget.style.color = '#8c909f';
+                        }
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

@@ -79,10 +79,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
 
   const filterByDate = (items: any[], startStr: string, endStr: string, field: string) => {
     if (!startStr && !endStr) return items;
-    const s = startStr ? new Date(startStr).getTime() : 0;
-    const e = endStr ? new Date(endStr).setHours(23, 59, 59, 999) : Infinity;
+    const s = startStr ? new Date(startStr + 'T00:00:00').getTime() : 0;
+    const e = endStr ? new Date(endStr + 'T23:59:59.999').getTime() : Infinity;
     return items.filter(item => {
-      const d = new Date(String(item[field])).getTime();
+      const val = item[field];
+      if (!val) return false;
+      const d = new Date(String(val)).getTime();
       return d >= s && d <= e;
     });
   };

@@ -38,9 +38,8 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({ data, currentUse
       let matchDate = true;
       if (startDate || endDate) {
         const pDate = new Date(p.startTime).getTime();
-        const start = startDate ? new Date(startDate).getTime() : 0;
-        // End of the selected day
-        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Infinity;
+        const start = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
+        const end = endDate ? new Date(endDate + 'T23:59:59.999').getTime() : Infinity;
         matchDate = pDate >= start && pDate <= end;
       }
 
