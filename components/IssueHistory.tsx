@@ -3,7 +3,7 @@ import {
   Search, AlertTriangle, Calendar, User as UserIcon, Trash2, X, Edit2, 
   Save, Upload, Clock, DollarSign, Users, Package, FileText, Wrench, 
   Target, CheckSquare, Square, ChevronLeft, ChevronRight, CheckCircle2, 
-  RotateCcw, Image as ImageIcon, MoreVertical, Camera, Plus
+  RotateCcw, Image as ImageIcon, MoreVertical, Camera, Plus, Download
 } from 'lucide-react';
 import { AppState, IssueType, User, IssueRecord } from '../types';
 import { ISSUE_TYPES, ROOT_CAUSES } from '../constants';
@@ -254,6 +254,73 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
   // Helper for checking if an issue has warning (rework or duplicate projectNs)
   const isWarningRow = (issue: IssueRecord) => {
     return isReincidencia(issue, data.issues);
+  };
+
+  const exportIssuesToExcel = (issues: IssueRecord[], currentUsersMap: Record<string, string>) => {
+    const headers = [
+      'Nº Ocorrência (NS)',
+      'Área / Setor',
+      'Descrição',
+      'Causa Raiz',
+      'Ação Corretiva',
+      'Status',
+      'Criado Por',
+      'Resolvido Por',
+      'Custo Total (R$)',
+      'Tempo Gasto (Minutos)',
+      'Data de Abertura',
+      'Data de Resolução',
+      'É Reincidência?'
+    ];
+
+    const rows = issues.map(issue => {
+      const sanitize = (val: any) => {
+        if (val === undefined || val === null) return '';
+        return String(val)
+          .replace(/;/g, ',') // Substitui ponto-e-vírgula por vírgula para não dividir colunas
+          .replace(/\r?\n|\r/g, ' ') // Remove quebras de linha
+          .trim();
+      };
+
+      const costStr = issue.totalCost !== undefined ? String(issue.totalCost).replace('.', ',') : '';
+      
+      const formatExcelDate = (isoString?: string) => {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleString('pt-BR');
+      };
+
+      const reinc = isReincidencia(issue, data.issues) ? 'Sim' : 'Não';
+
+      return [
+        sanitize(issue.projectNs),
+        sanitize(issue.type),
+        sanitize(issue.description),
+        sanitize(issue.rootCause),
+        sanitize(issue.correctiveAction),
+        sanitize(issue.status || 'ABERTA'),
+        sanitize(issue.reportedBy || ''),
+        sanitize(issue.resolvedBy || ''),
+        costStr,
+        issue.timeSpent || '',
+        formatExcelDate(issue.date),
+        issue.status === 'FINALIZADA' ? formatExcelDate(issue.resolvedAt || issue.date) : '',
+        reinc
+      ].join(';');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_ocorrencias_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const [workflowTab, setWorkflowTab] = useState<'ABERTA' | 'FINALIZADA'>('ABERTA');
@@ -1050,7 +1117,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       </div>
 
       {/* ── FILTER & TOOLS UTILITY PANEL ── */}
-      <div style={glassStyle}>
+      <div style={{ ...glassStyle, position: 'relative', zIndex: 50 }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.75rem', marginBottom: (!isMobile || showMobileDates) ? '0.75rem' : '0' }}>
           {/* Search (Wider search input with a clear 'X' button) */}
           <div style={{ position: 'relative', flex: isMobile ? 'none' : '2 1 300px' }}>
@@ -1429,6 +1496,47 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
               background: 'rgba(239, 68, 68, 0.25)',
               border: '1px solid rgba(239, 68, 68, 0.4)',
               color: '#fca5a5',
+              padding: '1px 6px',
+              borderRadius: '999px',
+              fontSize: '0.6875rem',
+              fontWeight: 800,
+              marginLeft: '4px',
+              fontFamily: "'JetBrains Mono', monospace"
+            }}>
+              {selectedIssues.size > 0 ? selectedIssues.size : filteredIssues.length}
+            </span>
+          </button>
+        )}
+
+        {/* Generate Excel Report button (Hidden for QUALIDADE role) */}
+        {!isQualidade && (
+          <button
+            onClick={() => exportIssuesToExcel(selectedIssues.size > 0 ? filteredIssues.filter(i => selectedIssues.has(i.id)) : filteredIssues, usersMap)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1.25rem',
+              minHeight: '44px',
+              borderRadius: '0.5rem',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.25) 100%)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: '#34d399',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.05)',
+              marginLeft: '0.5rem'
+            }}
+          >
+            <Download style={{ width: '0.9375rem', height: '0.9375rem', transform: 'rotate(0deg)' }} />
+            Exportar Excel
+            <span style={{
+              background: 'rgba(16, 185, 129, 0.25)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: '#a7f3d0',
               padding: '1px 6px',
               borderRadius: '999px',
               fontSize: '0.6875rem',

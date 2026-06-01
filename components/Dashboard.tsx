@@ -72,6 +72,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [reworkTimeByAreaDate, setReworkTimeByAreaDate] = useState({ start: '', end: '' });
   const [users, setUsers] = useState<User[]>([]);
 
+  // Sincroniza todos os sub-filtros de gráficos ao alterar o filtro principal de datas
+  useEffect(() => {
+    setCostChartDate({ start: startDate, end: endDate });
+    setIssuePieDate({ start: startDate, end: endDate });
+    setReworkTimeByAreaDate({ start: startDate, end: endDate });
+  }, [startDate, endDate]);
+
   useEffect(() => {
     fetchUsers().then(setUsers);
   }, []);
@@ -283,7 +290,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {/* Date filter bar */}
-      <div className="dash-card" style={{ ...cardStyle, padding: '1.25rem 1.5rem' }}>
+      <div className="dash-card" style={{ ...cardStyle, padding: '1.25rem 1.5rem', position: 'relative', zIndex: 50 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#94a3b8', fontWeight: 600, fontSize: '0.875rem' }}>
             <Filter style={{ width: '1rem', height: '1rem', color: '#3b82f6' }} />
