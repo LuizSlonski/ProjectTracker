@@ -282,11 +282,12 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
 
     const rows = issues.map(issue => {
       const sanitize = (val: any) => {
-        if (val === undefined || val === null) return '';
-        return String(val)
-          .replace(/;/g, ',') // Substitui ponto-e-vírgula por vírgula para não dividir colunas
+        if (val === undefined || val === null) return '""';
+        const str = String(val)
+          .replace(/"/g, '""')       // Escapa aspas para formato CSV (aspas duplas)
           .replace(/\r?\n|\r/g, ' ') // Remove quebras de linha
           .trim();
+        return `"${str}"`;           // Envolve em aspas duplas
       };
 
       const costStr = issue.totalCost !== undefined ? String(issue.totalCost).replace('.', ',') : '';
@@ -299,11 +300,14 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       };
 
       const formatExcelPhotos = (photoList?: string[]) => {
-        if (!photoList || photoList.length === 0) return '';
+        if (!photoList || photoList.length === 0) return '""';
         if (photoList.length === 1) {
-          return `=HYPERLINK("${photoList[0]}"; "Ver Foto")`;
+          // Retorna a fórmula do hyperlink encapsulada em aspas duplas para o CSV,
+          // com aspas internas duplicadas para que o Excel interprete corretamente.
+          return `"=HYPERLINK(""${photoList[0]}""; ""Ver Foto"")"`;
         }
-        return photoList.join(', ');
+        const listStr = photoList.join(', ').replace(/"/g, '""');
+        return `"${listStr}"`;
       };
 
       const reinc = isReincidencia(issue, data.issues) ? 'Sim' : 'Não';
@@ -330,17 +334,17 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
     });
 
     const pad = ';'.repeat(headers.length - 1);
-    const titleRow = `QualityTracker - Relatório de Ocorrências de Qualidade${pad}`;
+    const titleRow = `"QualityTracker - Relatório de Ocorrências de Qualidade"${pad}`;
     
     const dateStartStr = startStr ? new Date(startStr + 'T00:00:00').toLocaleDateString('pt-BR') : '';
     const dateEndStr = endStr ? new Date(endStr + 'T23:59:59').toLocaleDateString('pt-BR') : '';
     const periodText = (dateStartStr || dateEndStr)
       ? `Período: ${dateStartStr || 'Início'} até ${dateEndStr || 'Hoje'}`
       : 'Período: Histórico Completo';
-    const periodRow = `${periodText}${pad}`;
+    const periodRow = `"${periodText}"${pad}`;
     
-    const emissionRow = `Data de Emissão: ${new Date().toLocaleString('pt-BR')}${pad}`;
-    const totalRowText = `Total de Ocorrências Filtradas: ${issues.length}${pad}`;
+    const emissionRow = `"Data de Emissão: ${new Date().toLocaleString('pt-BR')}"${pad}`;
+    const totalRowText = `"Total de Ocorrências Filtradas: ${issues.length}"${pad}`;
     const emptyRow = pad;
 
     const csvContent = '\uFEFF' + [
@@ -349,7 +353,7 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       emissionRow,
       totalRowText,
       emptyRow,
-      headers.join(';'),
+      headers.map(h => `"${h.replace(/"/g, '""')}"`).join(';'),
       ...rows
     ].join('\n');
 
