@@ -304,10 +304,13 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
         if (photoList.length === 1) {
           // Retorna a fórmula do hyperlink encapsulada em aspas duplas para o CSV,
           // com aspas internas duplicadas para que o Excel interprete corretamente.
-          return `"=HYPERLINK(""${photoList[0]}""; ""Ver Foto"")"`;
+          return `"=HIPERLINK(""${photoList[0]}""; ""link"")"`;
         }
-        const listStr = photoList.join(', ').replace(/"/g, '""');
-        return `"${listStr}"`;
+        // Para múltiplas fotos, concatena as fórmulas HIPERLINK usando &
+        const hyperlinkParts = photoList.map((url, idx) => {
+          return `HIPERLINK(""${url}""; ""link ${idx + 1}"")`;
+        });
+        return `"= ${hyperlinkParts.join(' & "" / "" & ')}"`;
       };
 
       const reinc = isReincidencia(issue, data.issues) ? 'Sim' : 'Não';
