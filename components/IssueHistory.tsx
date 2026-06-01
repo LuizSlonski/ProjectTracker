@@ -300,8 +300,8 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
         sanitize(issue.rootCause),
         sanitize(issue.correctiveAction),
         sanitize(issue.status || 'ABERTA'),
-        sanitize(issue.reportedBy || ''),
-        sanitize(issue.resolvedBy || ''),
+        sanitize(currentUsersMap[issue.reportedBy || ''] || issue.reportedBy || ''),
+        sanitize(currentUsersMap[issue.resolvedBy || ''] || issue.resolvedBy || ''),
         costStr,
         issue.timeSpent || '',
         formatExcelDate(issue.date),
@@ -395,7 +395,11 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
 
   useEffect(() => {
     fetchUsers().then(users => {
-      setUsersMap(users.reduce((acc, u) => ({ ...acc, [u.id]: u.name }), {} as Record<string, string>));
+      setUsersMap(users.reduce((acc, u) => {
+        acc[u.id] = u.name;
+        if (u.username) acc[u.username] = u.name;
+        return acc;
+      }, {} as Record<string, string>));
     });
   }, []);
 

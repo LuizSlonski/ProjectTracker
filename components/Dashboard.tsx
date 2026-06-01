@@ -5,7 +5,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, ComposedChart, Area
 } from 'recharts';
 import { Sparkles, BarChart3, PieChart as PieIcon, Download, Clock, Filter, TrendingDown, AlertTriangle, Lightbulb, ChevronDown, Bot, Timer, Percent, DollarSign, Users, Hash, TrendingUp, Repeat, User as UserIcon } from 'lucide-react';
-import { AppState, User } from '../types';
+import { AppState, User, IssueRecord } from '../types';
 import { analyzePerformance } from '../services/geminiService';
 import { fetchUsers } from '../services/storageService';
 import { CustomDatePicker } from './CustomDatePicker';
@@ -71,6 +71,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
   const [issuePieDate, setIssuePieDate] = useState({ start: '', end: '' });
   const [reworkTimeByAreaDate, setReworkTimeByAreaDate] = useState({ start: '', end: '' });
   const [users, setUsers] = useState<User[]>([]);
+
+  const usersMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach(u => {
+      map[u.id] = u.name;
+      if (u.username) {
+        map[u.username] = u.name;
+      }
+    });
+    return map;
+  }, [users]);
 
   // Sincroniza todos os sub-filtros de gráficos ao alterar o filtro principal de datas
   useEffect(() => {
@@ -267,6 +278,115 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
+  const isSimilarText = (str1: string, str2: string): boolean => {
+    const clean = (s: string) => 
+      s.toLowerCase()
+       .normalize("NFD")
+       .replace(/[\u0300-\u036f]/g, "")
+       .replace(/[^a-z0-9\s]/g, "")
+       .trim();
+    
+    const n1 = clean(str1);
+    const n2 = clean(str2);
+    if (n1 === n2) return true;
+    if (!n1 || !n2) return false;
+    
+    if (n1.length > 5 && n2.length > 5) {
+      if (n1.includes(n2) || n2.includes(n1)) return true;
+    }
+    
+    const w1 = new Set(n1.split(/\s+/).filter(w => w.length > 2));
+    const w2 = new Set(n2.split(/\s+/).filter(w => w.length > 2));
+    if (w1.size === 0 || w2.size === 0) return false;
+    
+    let intersection = 0;
+    w1.forEach(w => { if (w2.has(w)) intersection++; });
+    const union = new Set([...w1, ...w2]).size;
+    const jaccard = intersection / union;
+    
+    return jaccard >= 0.5;
+  };
+
+  const getReincidentIssues = (issue: IssueRecord, allIssues: IssueRecord[]) => {
+    return allIssues.filter(i => 
+      i.id !== issue.id && 
+      i.projectNs.trim().toLowerCase() === issue.projectNs.trim().toLowerCase() &&
+      i.type === issue.type &&
+      isSimilarText(i.description || '', issue.description || '')
+    );
+  };
+
+  const isReincidencia = (issue: IssueRecord, allIssues: IssueRecord[]): boolean => {
+    return getReincidentIssues(issue, allIssues).length > 0;
+  };
+
+  const exportIssuesToExcel = (issues: IssueRecord[], currentUsersMap: Record<string, string>) => {
+    const headers = [
+      'Nº Ocorrência (NS)',
+      'Área / Setor',
+      'Descrição',
+      'Causa Raiz',
+      'Ação Corretiva',
+      'Status',
+      'Criado Por',
+      'Resolvido Por',
+      'Custo Total (R$)',
+      'Tempo Gasto (Minutos)',
+      'Data de Abertura',
+      'Data de Resolução',
+      'É Reincidência?'
+    ];
+
+    const rows = issues.map(issue => {
+      const sanitize = (val: any) => {
+        if (val === undefined || val === null) return '';
+        return String(val)
+          .replace(/;/g, ',')
+          .replace(/\r?\n|\r/g, ' ')
+          .trim();
+      };
+
+      const costStr = issue.totalCost !== undefined ? String(issue.totalCost).replace('.', ',') : '';
+      
+      const formatExcelDate = (isoString?: string) => {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleString('pt-BR');
+      };
+
+      const reinc = isReincidencia(issue, data.issues) ? 'Sim' : 'Não';
+
+      return [
+        sanitize(issue.projectNs),
+        sanitize(issue.type),
+        sanitize(issue.description),
+        sanitize(issue.rootCause),
+        sanitize(issue.correctiveAction),
+        sanitize(issue.status || 'ABERTA'),
+        sanitize(currentUsersMap[issue.reportedBy || ''] || issue.reportedBy || ''),
+        sanitize(currentUsersMap[issue.resolvedBy || ''] || issue.resolvedBy || ''),
+        costStr,
+        issue.timeSpent || '',
+        formatExcelDate(issue.date),
+        issue.status === 'FINALIZADA' ? formatExcelDate(issue.resolvedAt || issue.date) : '',
+        reinc
+      ].join(';');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_ocorrencias_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const DatePicker = ({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) => (
     <CustomDatePicker value={value} onChange={onChange} label={label} />
   );
@@ -413,6 +533,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
                 <Download style={{ width: '0.875rem', height: '0.875rem' }} /> CSV
               </button>
             )}
+            <button
+              onClick={() => exportIssuesToExcel(filteredIssues, usersMap)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                borderRadius: '0.625rem',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.25) 100%)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#34d399',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.05)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.25) 100%)'; }}
+            >
+              <Download style={{ width: '0.875rem', height: '0.875rem' }} />
+              Exportar Excel
+              <span style={{
+                background: 'rgba(16, 185, 129, 0.25)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#a7f3d0',
+                padding: '1px 6px',
+                borderRadius: '999px',
+                fontSize: '0.6875rem',
+                fontWeight: 800,
+                marginLeft: '4px',
+                fontFamily: "'JetBrains Mono', monospace"
+              }}>
+                {filteredIssues.length}
+              </span>
+            </button>
             <button onClick={handleAiAnalysis} disabled={isLoadingAi} style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               padding: '0.5rem 0.875rem', borderRadius: '0.625rem', fontSize: '0.8125rem', fontWeight: 600,
