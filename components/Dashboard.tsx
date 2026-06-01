@@ -320,7 +320,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
     return getReincidentIssues(issue, allIssues).length > 0;
   };
 
-  const exportIssuesToExcel = (issues: IssueRecord[], currentUsersMap: Record<string, string>) => {
+  const exportIssuesToExcel = (
+    issues: IssueRecord[],
+    currentUsersMap: Record<string, string>,
+    startStr: string = '',
+    endStr: string = ''
+  ) => {
     const headers = [
       'Nº Ocorrência (NS)',
       'Área / Setor',
@@ -333,7 +338,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
       'Custo Total (R$)',
       'Tempo Gasto (Minutos)',
       'Data de Abertura',
+      'Fotos de Abertura',
       'Data de Resolução',
+      'Fotos de Resolução',
       'É Reincidência?'
     ];
 
@@ -355,7 +362,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         return d.toLocaleString('pt-BR');
       };
 
+      const formatExcelPhotos = (photoList?: string[]) => {
+        if (!photoList || photoList.length === 0) return '';
+        if (photoList.length === 1) {
+          return `=HYPERLINK("${photoList[0]}"; "Ver Foto")`;
+        }
+        return photoList.join(', ');
+      };
+
       const reinc = isReincidencia(issue, data.issues) ? 'Sim' : 'Não';
+      const openingPhotos = issue.photos || [];
+      const resPhotos = issue.resolvedPhotos || (issue.resolvedPhoto ? [issue.resolvedPhoto] : []);
 
       return [
         sanitize(issue.projectNs),
@@ -369,12 +386,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
         costStr,
         issue.timeSpent || '',
         formatExcelDate(issue.date),
+        formatExcelPhotos(openingPhotos),
         issue.status === 'FINALIZADA' ? formatExcelDate(issue.resolvedAt || issue.date) : '',
+        formatExcelPhotos(resPhotos),
         reinc
       ].join(';');
     });
 
-    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+    const pad = ';'.repeat(headers.length - 1);
+    const titleRow = `QualityTracker - Relatório de Ocorrências de Qualidade${pad}`;
+    
+    const dateStartStr = startStr ? new Date(startStr + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+    const dateEndStr = endStr ? new Date(endStr + 'T23:59:59').toLocaleDateString('pt-BR') : '';
+    const periodText = (dateStartStr || dateEndStr)
+      ? `Período: ${dateStartStr || 'Início'} até ${dateEndStr || 'Hoje'}`
+      : 'Período: Histórico Completo';
+    const periodRow = `${periodText}${pad}`;
+    
+    const emissionRow = `Data de Emissão: ${new Date().toLocaleString('pt-BR')}${pad}`;
+    const totalRowText = `Total de Ocorrências Filtradas: ${issues.length}${pad}`;
+    const emptyRow = pad;
+
+    const csvContent = '\uFEFF' + [
+      titleRow,
+      periodRow,
+      emissionRow,
+      totalRowText,
+      emptyRow,
+      headers.join(';'),
+      ...rows
+    ].join('\n');
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     
     const link = document.createElement('a');
@@ -534,7 +576,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser }) => {
               </button>
             )}
             <button
-              onClick={() => exportIssuesToExcel(filteredIssues, usersMap)}
+              onClick={() => exportIssuesToExcel(filteredIssues, usersMap, startDate, endDate)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
