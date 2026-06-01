@@ -284,17 +284,16 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
       'É Reincidência?'
     ];
 
-    const rows = issues.map(issue => {
-      const sanitize = (val: any) => {
-        if (val === undefined || val === null) return '""';
-        const str = String(val)
-          .replace(/"/g, '""')       // Escapa aspas para formato CSV (aspas duplas)
-          .replace(/\r?\n|\r/g, ' ') // Remove quebras de linha
-          .trim();
-        return `"${str}"`;           // Envolve em aspas duplas
-      };
+    const dateStartStr = startStr ? new Date(startStr + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+    const dateEndStr = endStr ? new Date(endStr + 'T23:59:59').toLocaleDateString('pt-BR') : '';
+    const periodText = (dateStartStr || dateEndStr)
+      ? `Período: ${dateStartStr || 'Início'} até ${dateEndStr || 'Hoje'}`
+      : 'Período: Histórico Completo';
 
-      const costStr = issue.totalCost !== undefined ? String(issue.totalCost).replace('.', ',') : '';
+    const emissionDate = new Date().toLocaleString('pt-BR');
+
+    const rowsHtml = issues.map(issue => {
+      const costStr = issue.totalCost !== undefined ? String(issue.totalCost).replace('.', ',') : '0,00';
       
       const formatExcelDate = (isoString?: string) => {
         if (!isoString) return '';
@@ -303,73 +302,160 @@ export const IssueHistory: React.FC<IssueHistoryProps> = ({ data, currentUser, o
         return d.toLocaleString('pt-BR');
       };
 
-      const getPhotoHyperlinks = (photoList: string[]) => {
-        const cells: string[] = [];
+      const getPhotoCellsHtml = (photoList: string[]) => {
+        let html = '';
         for (let i = 0; i < 3; i++) {
           if (photoList && photoList[i]) {
-            cells.push(`"=HIPERLINK(""${photoList[i]}""; ""Foto"")"`);
+            html += `<td class="text-center"><a href="${photoList[i]}" class="hyperlink">Foto</a></td>`;
           } else {
-            cells.push('""');
+            html += `<td></td>`;
           }
         }
-        return cells;
+        return html;
       };
 
       const reinc = isReincidencia(issue, data.issues) ? 'Sim' : 'Não';
       const openingPhotos = issue.photos || [];
       const resPhotos = issue.resolvedPhotos || (issue.resolvedPhoto ? [issue.resolvedPhoto] : []);
-      const openingPhotoCells = getPhotoHyperlinks(openingPhotos);
-      const resPhotoCells = getPhotoHyperlinks(resPhotos);
+      const openingPhotoCellsHtml = getPhotoCellsHtml(openingPhotos);
+      const resPhotoCellsHtml = getPhotoCellsHtml(resPhotos);
 
-      return [
-        sanitize(issue.projectNs),
-        sanitize(issue.type),
-        sanitize(issue.description),
-        sanitize(issue.rootCause),
-        sanitize(issue.correctiveAction),
-        sanitize(issue.status || 'ABERTA'),
-        sanitize(currentUsersMap[issue.reportedBy || ''] || issue.reportedBy || ''),
-        sanitize(currentUsersMap[issue.resolvedBy || ''] || issue.resolvedBy || ''),
-        costStr,
-        issue.timeSpent || '',
-        formatExcelDate(issue.date),
-        ...openingPhotoCells,
-        issue.status === 'FINALIZADA' ? formatExcelDate(issue.resolvedAt || issue.date) : '',
-        ...resPhotoCells,
-        reinc
-      ].join(';');
-    });
+      const statusColor = issue.status === 'FINALIZADA' ? '#D4EFDF' : '#FADBD8';
+      const statusTextColor = issue.status === 'FINALIZADA' ? '#196F3D' : '#78281F';
 
-    const pad = ';'.repeat(headers.length - 1);
-    const titleRow = `"QualityTracker - Relatório de Ocorrências de Qualidade"${pad}`;
-    
-    const dateStartStr = startStr ? new Date(startStr + 'T00:00:00').toLocaleDateString('pt-BR') : '';
-    const dateEndStr = endStr ? new Date(endStr + 'T23:59:59').toLocaleDateString('pt-BR') : '';
-    const periodText = (dateStartStr || dateEndStr)
-      ? `Período: ${dateStartStr || 'Início'} até ${dateEndStr || 'Hoje'}`
-      : 'Período: Histórico Completo';
-    const periodRow = `"${periodText}"${pad}`;
-    
-    const emissionRow = `"Data de Emissão: ${new Date().toLocaleString('pt-BR')}"${pad}`;
-    const totalRowText = `"Total de Ocorrências Filtradas: ${issues.length}"${pad}`;
-    const emptyRow = pad;
+      return `
+        <tr>
+          <td class="text-center" style="font-family: 'JetBrains Mono', monospace; mso-number-format: '\\@';">${issue.projectNs || ''}</td>
+          <td class="text-center">${issue.type || ''}</td>
+          <td class="text-left">${issue.description || ''}</td>
+          <td class="text-left">${issue.rootCause || ''}</td>
+          <td class="text-left">${issue.correctiveAction || ''}</td>
+          <td class="text-center" style="background-color: ${statusColor}; color: ${statusTextColor}; font-weight: bold;">${issue.status || 'ABERTA'}</td>
+          <td class="text-center">${currentUsersMap[issue.reportedBy || ''] || issue.reportedBy || ''}</td>
+          <td class="text-center">${currentUsersMap[issue.resolvedBy || ''] || issue.resolvedBy || ''}</td>
+          <td class="text-right" style="font-family: 'JetBrains Mono', monospace; mso-number-format: '\\#\\,\\#\\#0\\,00';">${costStr}</td>
+          <td class="text-right" style="font-family: 'JetBrains Mono', monospace; mso-number-format: '0';">${issue.timeSpent || '0'}</td>
+          <td class="text-center">${formatExcelDate(issue.date)}</td>
+          ${openingPhotoCellsHtml}
+          <td class="text-center">${issue.status === 'FINALIZADA' ? formatExcelDate(issue.resolvedAt || issue.date) : ''}</td>
+          ${resPhotoCellsHtml}
+          <td class="text-center" style="font-weight: bold; color: ${reinc === 'Sim' ? '#B9770E' : '#2C3E50'};">${reinc}</td>
+        </tr>
+      `;
+    }).join('\n');
 
-    const csvContent = '\uFEFF' + [
-      titleRow,
-      periodRow,
-      emissionRow,
-      totalRowText,
-      emptyRow,
-      headers.map(h => `"${h.replace(/"/g, '""')}"`).join(';'),
-      ...rows
-    ].join('\n');
+    const htmlContent = `\uFEFF` + `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:x="urn:schemas-microsoft-com:office:excel"
+            xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Ocorrências</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; }
+          table { border-collapse: collapse; }
+          th {
+            background-color: #BDD7EE;
+            color: #000000;
+            font-weight: bold;
+            border: 0.5pt solid #8FAADC;
+            text-align: center;
+            padding: 8px;
+            font-size: 11pt;
+          }
+          td {
+            border: 0.5pt solid #D9D9D9;
+            padding: 6px;
+            vertical-align: middle;
+            font-size: 10pt;
+            white-space: normal;
+            word-wrap: break-word;
+          }
+          .meta-cell {
+            background-color: #FFC000;
+            color: #000000;
+            font-weight: bold;
+            text-align: center;
+            font-size: 12pt;
+            border: 0.5pt solid #FFC000;
+            padding: 8px;
+          }
+          .text-left { text-align: left; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .hyperlink {
+            color: #0563C1;
+            text-decoration: underline;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <table>
+          <colgroup>
+            <col style="width: 120px;"> <!-- Nº Ocorrência (NS) -->
+            <col style="width: 120px;"> <!-- Área / Setor -->
+            <col style="width: 320px;"> <!-- Descrição -->
+            <col style="width: 160px;"> <!-- Causa Raiz -->
+            <col style="width: 320px;"> <!-- Ação Corretiva -->
+            <col style="width: 110px;"> <!-- Status -->
+            <col style="width: 120px;"> <!-- Criado Por -->
+            <col style="width: 120px;"> <!-- Resolvido Por -->
+            <col style="width: 120px;"> <!-- Custo Total (R$) -->
+            <col style="width: 120px;"> <!-- Tempo Gasto (Minutos) -->
+            <col style="width: 150px;"> <!-- Data de Abertura -->
+            <col style="width: 80px;">  <!-- Foto Abertura 1 -->
+            <col style="width: 80px;">  <!-- Foto Abertura 2 -->
+            <col style="width: 80px;">  <!-- Foto Abertura 3 -->
+            <col style="width: 150px;"> <!-- Data de Resolução -->
+            <col style="width: 80px;">  <!-- Foto Resolução 1 -->
+            <col style="width: 80px;">  <!-- Foto Resolução 2 -->
+            <col style="width: 80px;">  <!-- Foto Resolução 3 -->
+            <col style="width: 120px;"> <!-- É Reincidência? -->
+          </colgroup>
+          <tr style="height: 30px;">
+            <td colspan="19" class="meta-cell">QualityTracker - Relatório de Ocorrências de Qualidade</td>
+          </tr>
+          <tr style="height: 25px;">
+            <td colspan="19" class="meta-cell">Período: ${periodText}</td>
+          </tr>
+          <tr style="height: 25px;">
+            <td colspan="19" class="meta-cell">Data de Emissão: ${emissionDate}</td>
+          </tr>
+          <tr style="height: 25px;">
+            <td colspan="19" class="meta-cell">Total de Ocorrências Filtradas: ${issues.length}</td>
+          </tr>
+          <tr style="height: 15px;">
+            <td colspan="19" style="border: none; background-color: #FFFFFF; height: 15px;"></td>
+          </tr>
+          <tr style="height: 25px;">
+            ${headers.map(h => `<th>${h}</th>`).join('')}
+          </tr>
+          ${rowsHtml}
+        </table>
+      </body>
+      </html>
+    `;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio_ocorrencias_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `relatorio_ocorrencias_${new Date().toISOString().slice(0, 10)}.xls`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
